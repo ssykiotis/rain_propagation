@@ -1,2 +1,2 @@
 # rain_propagation
-Implementing an extension to the Ns3 simulator to precisely model rain attenuation in mmWave P2P Links using Finite-State Markov Chains
+Full ns-3 module, working towards the extension of the simulator to include rain propagation model
