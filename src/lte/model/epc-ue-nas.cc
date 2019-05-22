@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #include <ns3/fatal-error.h>
@@ -65,6 +69,7 @@ EpcUeNas::EpcUeNas ()
 {
   NS_LOG_FUNCTION (this);
   m_asSapUser = new MemberLteAsSapUser<EpcUeNas> (this);
+  m_mmWaveAsSapProvider = 0;
 }
 
 
@@ -95,14 +100,14 @@ EpcUeNas::GetTypeId (void)
   return tid;
 }
 
-void 
+void
 EpcUeNas::SetDevice (Ptr<NetDevice> dev)
 {
   NS_LOG_FUNCTION (this << dev);
   m_device = dev;
 }
 
-void 
+void
 EpcUeNas::SetImsi (uint64_t imsi)
 {
   NS_LOG_FUNCTION (this << imsi);
@@ -139,6 +144,13 @@ EpcUeNas::GetAsSapUser ()
 }
 
 void
+EpcUeNas::SetMmWaveAsSapProvider (LteAsSapProvider* s)
+{
+  NS_LOG_FUNCTION (this << s);
+  m_mmWaveAsSapProvider = s;
+}
+
+void
 EpcUeNas::SetForwardUpCallback (Callback <void, Ptr<Packet> > cb)
 {
   NS_LOG_FUNCTION (this);
@@ -152,7 +164,7 @@ EpcUeNas::StartCellSelection (uint32_t dlEarfcn)
   m_asSapProvider->StartCellSelection (dlEarfcn);
 }
 
-void 
+void
 EpcUeNas::Connect ()
 {
   NS_LOG_FUNCTION (this);
@@ -173,8 +185,23 @@ EpcUeNas::Connect (uint16_t cellId, uint32_t dlEarfcn)
   m_asSapProvider->Connect ();
 }
 
+void
+EpcUeNas::ConnectMc (uint16_t cellId, uint16_t dlEarfcn, uint16_t mmWaveCellId)
+{
+  NS_LOG_FUNCTION (this << cellId << dlEarfcn);
 
-void 
+  // force the UE RRC to be camped on a specific eNB
+  m_asSapProvider->ForceCampedOnEnb (cellId, dlEarfcn);
+
+  // tell RRC to go into connected mode
+  m_asSapProvider->Connect ();
+
+  m_mmWaveCellId = mmWaveCellId;
+  m_dlEarfcn = dlEarfcn;
+}
+
+
+void
 EpcUeNas::Disconnect ()
 {
   NS_LOG_FUNCTION (this);
@@ -183,7 +210,7 @@ EpcUeNas::Disconnect ()
 }
 
 
-void 
+void
 EpcUeNas::ActivateEpsBearer (EpsBearer bearer, Ptr<EpcTft> tft)
 {
   NS_LOG_FUNCTION (this);
@@ -220,7 +247,7 @@ EpcUeNas::Send (Ptr<Packet> packet)
           }
         else
           {
-            m_asSapProvider->SendData (packet, bid); 
+            m_asSapProvider->SendData (packet, bid);
             return true;
           }
       }
@@ -233,12 +260,79 @@ EpcUeNas::Send (Ptr<Packet> packet)
     }
 }
 
-void 
-EpcUeNas::DoNotifyConnectionSuccessful ()
+void
+EpcUeNas::DoNotifyConnectionSuccessful (uint16_t rnti)
 {
   NS_LOG_FUNCTION (this);
+  switch (m_state)
+  {
+    case ACTIVE: // this means the Master LTE Cell was already connected
+      {
+        // notify the LTE eNB RRC that a secondary cell is available
+        m_asSapProvider->NotifySecondaryCellConnected(rnti, m_mmWaveCellId);
+      }
+      break;
 
-  SwitchToState (ACTIVE); // will eventually activate dedicated bearers
+    default:
+      SwitchToState (ACTIVE); // will eventually activate dedicated bearers
+      break;
+  }
+}
+
+void
+EpcUeNas::DoNotifyHandoverSuccessful (uint16_t rnti, uint16_t mmWaveCellId)
+{
+  m_mmWaveCellId = mmWaveCellId;
+  NS_LOG_FUNCTION (this);
+  switch (m_state)
+  {
+    case ACTIVE: // this means the Master LTE Cell was already connected
+      {
+        // notify the LTE eNB RRC that a secondary cell is available
+        m_asSapProvider->NotifySecondaryCellConnected(rnti, m_mmWaveCellId);
+      }
+      break;
+
+    default:
+      SwitchToState (ACTIVE); // will eventually activate dedicated bearers
+      break;
+  }
+}
+
+void
+EpcUeNas::DoNotifyConnectToMmWave(uint16_t mmWaveCellId)
+{
+  NS_LOG_LOGIC(mmWaveCellId);
+  m_mmWaveCellId = mmWaveCellId;
+
+  if(m_mmWaveAsSapProvider != 0) {
+
+    NS_ASSERT_MSG(mmWaveCellId > 0, "Invalid CellId");
+
+    NS_LOG_INFO("Connect to cell " << mmWaveCellId);
+    // force the UE RRC to be camped on a specific eNB
+    m_mmWaveAsSapProvider->ForceCampedOnEnb (mmWaveCellId, m_dlEarfcn); // TODO probably the second argument is useless
+
+    // tell RRC to go into connected mode
+    m_mmWaveAsSapProvider->Connect ();
+  } else {
+    NS_LOG_WARN("Trying to connect to a secondary cell a non MC capable device");
+  }
+
+}
+
+void
+EpcUeNas::DoNotifySecondaryCellHandoverStarted (uint16_t oldRnti, uint16_t newRnti, uint16_t mmWaveCellId, LteRrcSap::RadioResourceConfigDedicated rrcd)
+{
+  m_mmWaveCellId = mmWaveCellId;
+  NS_ASSERT(m_asSapProvider != 0);
+
+  NS_ASSERT_MSG(mmWaveCellId > 0, "Invalid CellId");
+
+  NS_LOG_INFO("Notify the LTE RRC of the secondary cell HO to " << mmWaveCellId);
+  // Notify the LTE RRC of the secondary cell HO
+  m_asSapProvider->NotifySecondaryCellHandover(oldRnti, newRnti, mmWaveCellId, rrcd);
+
 }
 
 void
@@ -257,14 +351,14 @@ EpcUeNas::DoRecvData (Ptr<Packet> packet)
   m_forwardUpCallback (packet);
 }
 
-void 
+void
 EpcUeNas::DoNotifyConnectionReleased ()
 {
   NS_LOG_FUNCTION (this);
   SwitchToState (OFF);
 }
 
-void 
+void
 EpcUeNas::DoActivateEpsBearer (EpsBearer bearer, Ptr<EpcTft> tft)
 {
   NS_LOG_FUNCTION (this);
@@ -280,7 +374,7 @@ EpcUeNas::GetState () const
   return m_state;
 }
 
-void 
+void
 EpcUeNas::SwitchToState (State newState)
 {
   NS_LOG_FUNCTION (this << ToString (newState));
@@ -309,4 +403,3 @@ EpcUeNas::SwitchToState (State newState)
 
 
 } // namespace ns3
-

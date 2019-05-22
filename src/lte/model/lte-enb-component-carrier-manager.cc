@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2015 Danilo Abrignani
+ * Copyright (c) 2018, University of Padova, Dep. of Information Engineering, SIGNET lab.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,6 +18,8 @@
  *
  * Author: Danilo Abrignani <danilo.abrignani@unibo.it>
  *
+ * Modified by: Tommaso Zugno <tommasozugno@gmail.com>
+ *								 Integration of Carrier Aggregation for the mmWave module
  */
 
 #include "lte-enb-component-carrier-manager.h"
@@ -80,7 +83,7 @@ LteEnbComponentCarrierManager::GetLteCcmMacSapUser ()
   return m_ccmMacSapUser;
 }
 
-bool 
+bool
 LteEnbComponentCarrierManager::SetMacSapProvider (uint8_t componentCarrierId, LteMacSapProvider* sap)
 {
   NS_LOG_FUNCTION (this);
@@ -100,24 +103,24 @@ LteEnbComponentCarrierManager::SetMacSapProvider (uint8_t componentCarrierId, Lt
       res = true;
     }
   return res;
-  
+
 }
 
-bool 
+bool
 LteEnbComponentCarrierManager::SetCcmMacSapProviders (uint8_t componentCarrierId, LteCcmMacSapProvider* sap)
 {
   NS_LOG_FUNCTION (this);
   bool res = false;
   std::map< uint8_t,LteCcmMacSapProvider*>::iterator it =  m_ccmMacSapProviderMap.find (componentCarrierId);
-  
+
   if (it == m_ccmMacSapProviderMap.end ())
     {
       m_ccmMacSapProviderMap.insert (std::pair <uint8_t,LteCcmMacSapProvider*> (componentCarrierId, sap));
     }
- 
+
   res = true;
   return res;
-  
+
 }
 
 void
@@ -131,6 +134,12 @@ void
 LteEnbComponentCarrierManager::SetRrc (const Ptr<LteEnbRrc> rrc)
 {
   m_rrc = rrc;
+}
+
+void
+LteEnbComponentCarrierManager::SetBandwidthMap (std::map<uint8_t, double> bandwidthMap)
+{
+  m_bandwidthMap = bandwidthMap;
 }
 
 } // end of namespace ns3

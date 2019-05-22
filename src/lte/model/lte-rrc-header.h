@@ -1,6 +1,8 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
+
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +21,9 @@
  * Modified by:
  *          Danilo Abrignani <danilo.abrignani@unibo.it> (Carrier Aggregation - GSoC 2015)
  *          Biljana Bojovic <biljana.bojovic@cttc.es> (Carrier Aggregation)
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #ifndef RRC_HEADER_H
@@ -197,7 +202,7 @@ protected:
    * \param thresholdEutra LteRrcSap::ThresholdEutra
    */
   void SerializeThresholdEutra (LteRrcSap::ThresholdEutra thresholdEutra) const;
-  
+
   // Deserialization functions
   /**
    * Deserialize DRB to add mod list function
@@ -449,7 +454,7 @@ public:
   RrcUlCcchMessage ();
   ~RrcUlCcchMessage ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
   void PreSerialize () const;
@@ -480,7 +485,7 @@ public:
   RrcDlCcchMessage ();
   ~RrcDlCcchMessage ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
   void PreSerialize () const;
@@ -515,7 +520,7 @@ public:
    * \return the object TypeId
    */
   static TypeId GetTypeId (void);
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -544,6 +549,8 @@ public:
    */
   std::bitset<32> GetMtmsi () const;
 
+  std::bitset<1> GetIsMc () const;
+
 private:
   std::bitset<8> m_mmec; ///< MMEC
   std::bitset<32> m_mTmsi; ///< TMSI
@@ -556,6 +563,77 @@ private:
   std::bitset<1> m_spare; ///< spare bit
 };
 
+class RrcConnectToMmWaveHeader : public RrcDlCcchMessage
+{
+public:
+  RrcConnectToMmWaveHeader();
+  ~RrcConnectToMmWaveHeader();
+
+  // Inherited from RrcAsn1Header
+  static TypeId GetTypeId (void);
+  void PreSerialize () const;
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+
+/**
+//TODO doc
+*/
+void SetMessage (uint16_t mmWaveId);
+
+uint16_t GetMessage () const;
+
+private:
+std::bitset<16> m_mmWaveId;
+};
+
+class RrcNotifySecondaryConnectedHeader : public RrcUlDcchMessage
+{
+public:
+RrcNotifySecondaryConnectedHeader();
+~RrcNotifySecondaryConnectedHeader();
+
+// Inherited from RrcAsn1Header
+static TypeId GetTypeId (void);
+void PreSerialize () const;
+uint32_t Deserialize (Buffer::Iterator bIterator);
+void Print (std::ostream &os) const;
+
+/**
+//TODO doc
+*/
+void SetMessage (uint16_t mmWaveId, uint16_t mmWaveRnti);
+
+std::pair<uint16_t, uint16_t> GetMessage () const;
+
+private:
+std::bitset<16> m_mmWaveId;
+std::bitset<16> m_mmWaveRnti;
+};
+
+class RrcConnectionSwitchHeader : public RrcDlDcchMessage
+{
+public:
+RrcConnectionSwitchHeader();
+~RrcConnectionSwitchHeader();
+
+// Inherited from RrcAsn1Header
+static TypeId GetTypeId (void);
+void PreSerialize () const;
+uint32_t Deserialize (Buffer::Iterator bIterator);
+void Print (std::ostream &os) const;
+
+/**
+//TODO doc
+*/
+void SetMessage (LteRrcSap::RrcConnectionSwitch msg);
+
+LteRrcSap::RrcConnectionSwitch GetMessage () const;
+uint8_t GetRrcTransactionIdentifier () const;
+
+private:
+mutable LteRrcSap::RrcConnectionSwitch m_msg;
+};
+
 /**
 * This class manages the serialization/deserialization of RrcConnectionSetup IE
 */
@@ -565,7 +643,7 @@ public:
   RrcConnectionSetupHeader ();
   ~RrcConnectionSetupHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -592,7 +670,7 @@ public:
   * Getter for m_radioResourceConfigDedicated
   * @return m_radioResourceConfigDedicated
   */
-  LteRrcSap::RadioResourceConfigDedicated GetRadioResourceConfigDedicated () const; 
+  LteRrcSap::RadioResourceConfigDedicated GetRadioResourceConfigDedicated () const;
 
   /**
   * Gets m_radioResourceConfigDedicated.havePhysicalConfigDedicated
@@ -638,7 +716,7 @@ public:
   RrcConnectionSetupCompleteHeader ();
   ~RrcConnectionSetupCompleteHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -675,7 +753,7 @@ public:
   RrcConnectionReconfigurationCompleteHeader ();
   ~RrcConnectionReconfigurationCompleteHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -695,7 +773,7 @@ public:
   /**
   * Getter for m_rrcTransactionIdentifier
   * @return m_rrcTransactionIdentifier
-  */ 
+  */
   uint8_t GetRrcTransactionIdentifier () const;
 
 private:
@@ -712,7 +790,7 @@ public:
   RrcConnectionReconfigurationHeader ();
   ~RrcConnectionReconfigurationHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -720,14 +798,14 @@ public:
   /**
   * Receives a RrcConnectionReconfiguration IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionReconfiguration msg);
 
   /**
   * Returns a RrcConnectionReconfiguration IE from the values in the class attributes
   * @return A RrcConnectionReconfiguration, as defined in LteRrcSap
   */
-  LteRrcSap::RrcConnectionReconfiguration GetMessage () const; 
+  LteRrcSap::RrcConnectionReconfiguration GetMessage () const;
 
   /**
   * Getter for m_haveMeasConfig
@@ -775,7 +853,7 @@ public:
   * Getter for m_radioResourceConfigDedicated
   * @return m_radioResourceConfigDedicated
   */
-  LteRrcSap::RadioResourceConfigDedicated GetRadioResourceConfigDedicated () const; 
+  LteRrcSap::RadioResourceConfigDedicated GetRadioResourceConfigDedicated () const;
 
   /**
   * Getter for m_haveNonCriticalExtension
@@ -787,7 +865,7 @@ public:
   * Getter for m_nonCriticalExtension
   * @return m_nonCriticalExtension
   */
-  LteRrcSap::NonCriticalExtensionConfiguration GetNonCriticalExtensionConfig ();  
+  LteRrcSap::NonCriticalExtensionConfiguration GetNonCriticalExtensionConfig ();
 
   /**
   * Gets m_radioResourceConfigDedicated.havePhysicalConfigDedicated
@@ -839,7 +917,7 @@ class HandoverPreparationInfoHeader : public RrcAsn1Header
 public:
   HandoverPreparationInfoHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -847,7 +925,7 @@ public:
   /**
   * Receives a HandoverPreparationInfo IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::HandoverPreparationInfo msg);
 
   /**
@@ -859,7 +937,7 @@ public:
   /**
   * Getter for m_asConfig
   * @return m_asConfig
-  */ 
+  */
   LteRrcSap::AsConfig GetAsConfig () const;
 
 private:
@@ -875,7 +953,7 @@ public:
   RrcConnectionReestablishmentRequestHeader ();
   ~RrcConnectionReestablishmentRequestHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -883,7 +961,7 @@ public:
   /**
   * Receives a RrcConnectionReestablishmentRequest IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionReestablishmentRequest msg);
 
   /**
@@ -918,7 +996,7 @@ public:
   RrcConnectionReestablishmentHeader ();
   ~RrcConnectionReestablishmentHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -926,7 +1004,7 @@ public:
   /**
   * Receives a RrcConnectionReestablishment IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionReestablishment msg);
 
   /**
@@ -960,7 +1038,7 @@ class RrcConnectionReestablishmentCompleteHeader : public RrcUlDcchMessage
 public:
   RrcConnectionReestablishmentCompleteHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -968,7 +1046,7 @@ public:
   /**
   * Receives a RrcConnectionReestablishmentComplete IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionReestablishmentComplete msg);
 
   /**
@@ -996,7 +1074,7 @@ public:
   RrcConnectionReestablishmentRejectHeader ();
   ~RrcConnectionReestablishmentRejectHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -1004,7 +1082,7 @@ public:
   /**
   * Receives a RrcConnectionReestablishmentReject IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionReestablishmentReject msg);
 
   /**
@@ -1026,7 +1104,7 @@ public:
   RrcConnectionReleaseHeader ();
   ~RrcConnectionReleaseHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -1034,7 +1112,7 @@ public:
   /**
   * Receives a RrcConnectionRelease IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionRelease msg);
 
   /**
@@ -1056,7 +1134,7 @@ public:
   RrcConnectionRejectHeader ();
   ~RrcConnectionRejectHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -1064,7 +1142,7 @@ public:
   /**
   * Receives a RrcConnectionReject IE and stores the contents into the class attributes
   * @param msg The information element to parse
-  */ 
+  */
   void SetMessage (LteRrcSap::RrcConnectionReject msg);
 
   /**
@@ -1086,7 +1164,7 @@ public:
   MeasurementReportHeader ();
   ~MeasurementReportHeader ();
 
-  // Inherited from RrcAsn1Header 
+  // Inherited from RrcAsn1Header
   void PreSerialize () const;
   uint32_t Deserialize (Buffer::Iterator bIterator);
   void Print (std::ostream &os) const;
@@ -1111,4 +1189,3 @@ private:
 } // namespace ns3
 
 #endif // RRC_HEADER_H
-

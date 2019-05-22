@@ -70,95 +70,95 @@ public:
 
   EpcSgwPgwApplication (const Ptr<VirtualNetDevice> tunDevice, const Ptr<Socket> s1uSocket);
 
-  /** 
+  /**
    * Destructor
    */
   virtual ~EpcSgwPgwApplication (void);
-  
-  /** 
+
+  /**
    * Method to be assigned to the callback of the Gi TUN VirtualNetDevice. It
    * is called when the SGW/PGW receives a data packet from the
    * internet (including IP headers) that is to be sent to the UE via
    * its associated eNB, tunneling IP over GTP-U/UDP/IP.
-   * 
-   * \param packet 
-   * \param source 
-   * \param dest 
-   * \param protocolNumber 
-   * \return true always 
+   *
+   * \param packet
+   * \param source
+   * \param dest
+   * \param protocolNumber
+   * \return true always
    */
   bool RecvFromTunDevice (Ptr<Packet> packet, const Address& source, const Address& dest, uint16_t protocolNumber);
 
 
-  /** 
+  /**
    * Method to be assigned to the recv callback of the S1-U socket. It
    * is called when the SGW/PGW receives a data packet from the eNB
-   * that is to be forwarded to the internet. 
-   * 
+   * that is to be forwarded to the internet.
+   *
    * \param socket pointer to the S1-U socket
    */
   void RecvFromS1uSocket (Ptr<Socket> socket);
 
-  /** 
+  /**
    * Send a packet to the internet via the Gi interface of the SGW/PGW
-   * 
-   * \param packet 
+   *
+   * \param packet
    * \param teid the Tunnel Enpoint Identifier
    */
   void SendToTunDevice (Ptr<Packet> packet, uint32_t teid);
 
 
-  /** 
+  /**
    * Send a packet to the SGW via the S1-U interface
-   * 
+   *
    * \param packet packet to be sent
    * \param enbS1uAddress the address of the eNB
    * \param teid the Tunnel Enpoint IDentifier
    */
   void SendToS1uSocket (Ptr<Packet> packet, Ipv4Address enbS1uAddress, uint32_t teid);
-  
 
-  /** 
-   * Set the MME side of the S11 SAP 
-   * 
-   * \param s the MME side of the S11 SAP 
+
+  /**
+   * Set the MME side of the S11 SAP
+   *
+   * \param s the MME side of the S11 SAP
    */
   void SetS11SapMme (EpcS11SapMme * s);
 
-  /** 
-   * 
-   * \return the SGW side of the S11 SAP 
+  /**
+   *
+   * \return the SGW side of the S11 SAP
    */
   EpcS11SapSgw* GetS11SapSgw ();
 
 
-  /** 
-   * Let the SGW be aware of a new eNB 
-   * 
+  /**
+   * Let the SGW be aware of a new eNB
+   *
    * \param cellId the cell identifier
    * \param enbAddr the address of the eNB
    * \param sgwAddr the address of the SGW
    */
   void AddEnb (uint16_t cellId, Ipv4Address enbAddr, Ipv4Address sgwAddr);
 
-  /** 
+  /**
    * Let the SGW be aware of a new UE
-   * 
+   *
    * \param imsi the unique identifier of the UE
    */
   void AddUe (uint64_t imsi);
 
-  /** 
+  /**
    * set the address of a previously added UE
-   * 
+   *
    * \param imsi the unique identifier of the UE
    * \param ueAddr the IPv4 address of the UE
    */
   void SetUeAddress (uint64_t imsi, Ipv4Address ueAddr);
 
-  /** 
+  /**
    * set the address of a previously added UE
-   * 
+   *
    * \param imsi the unique identifier of the UE
    * \param ueAddr the IPv6 address of the UE
    */
@@ -184,7 +184,7 @@ private:
    * Modify bearer request function
    * \param msg EpcS11SapSgw::ModifyBearerRequestMessage
    */
-  void DoModifyBearerRequest (EpcS11SapSgw::ModifyBearerRequestMessage msg);  
+  void DoModifyBearerRequest (EpcS11SapSgw::ModifyBearerRequestMessage msg);
 
   /**
    * Delete bearer command function
@@ -204,53 +204,53 @@ private:
   class UeInfo : public SimpleRefCount<UeInfo>
   {
 public:
-    UeInfo ();  
+    UeInfo ();
 
-    /** 
-     * 
+    /**
+     *
      * \param tft the Traffic Flow Template of the new bearer to be added
      * \param epsBearerId the ID of the EPS Bearer to be activated
      * \param teid  the TEID of the new bearer
      */
     void AddBearer (Ptr<EpcTft> tft, uint8_t epsBearerId, uint32_t teid);
 
-    /** 
+    /**
      * \brief Function, deletes contexts of bearer on SGW and PGW side
      * \param bearerId the Bearer Id whose contexts to be removed
      */
     void RemoveBearer (uint8_t bearerId);
 
     /**
-     * 
-     * 
+     *
+     *
      * \param p the IP packet from the internet to be classified
-     * 
+     *
      * \return the corresponding bearer ID > 0 identifying the bearer
      * among all the bearers of this UE;  returns 0 if no bearers
      * matches with the previously declared TFTs
      */
     uint32_t Classify (Ptr<Packet> p);
 
-    /** 
+    /**
      * \return the address of the eNB to which the UE is connected
      */
     Ipv4Address GetEnbAddr ();
 
-    /** 
+    /**
      * set the address of the eNB to which the UE is connected
-     * 
+     *
      * \param addr the address of the eNB
      */
     void SetEnbAddr (Ipv4Address addr);
 
-    /** 
+    /**
      * \return the IPv4 address of the UE
      */
     Ipv4Address GetUeAddr ();
 
-    /** 
+    /**
      * set the IPv4 address of the UE
-     * 
+     *
      * \param addr the IPv4 address of the UE
      */
     void SetUeAddr (Ipv4Address addr);
@@ -280,25 +280,25 @@ public:
   * UDP socket to send and receive GTP-U packets to and from the S1-U interface
   */
   Ptr<Socket> m_s1uSocket;
-  
+
   /**
    * TUN VirtualNetDevice used for tunneling/detunneling IP packets
-   * from/to the internet over GTP-U/UDP/IP on the S1 interface 
+   * from/to the internet over GTP-U/UDP/IP on the S1 interface
    */
   Ptr<VirtualNetDevice> m_tunDevice;
 
   /**
-   * Map telling for each UE IPv4 address the corresponding UE info 
+   * Map telling for each UE IPv4 address the corresponding UE info
    */
   std::map<Ipv4Address, Ptr<UeInfo> > m_ueInfoByAddrMap;
 
   /**
-   * Map telling for each UE IPv6 address the corresponding UE info 
+   * Map telling for each UE IPv6 address the corresponding UE info
    */
   std::map<Ipv6Address, Ptr<UeInfo> > m_ueInfoByAddrMap6;
 
   /**
-   * Map telling for each IMSI the corresponding UE info 
+   * Map telling for each IMSI the corresponding UE info
    */
   std::map<uint64_t, Ptr<UeInfo> > m_ueInfoByImsiMap;
 
@@ -314,13 +314,13 @@ public:
 
   /**
    * MME side of the S11 SAP
-   * 
+   *
    */
   EpcS11SapMme* m_s11SapMme;
 
   /**
    * SGW side of the S11 SAP
-   * 
+   *
    */
   EpcS11SapSgw* m_s11SapSgw;
 
@@ -347,4 +347,3 @@ public:
 } //namespace ns3
 
 #endif /* EPC_SGW_PGW_APPLICATION_H */
-

@@ -176,13 +176,13 @@ LteHarqPhy::UpdateUlHarqProcessStatus (uint16_t rnti, double mi, uint16_t infoBy
     }
   else
     {
-      if ((*it).second.at (0).size () == 3) // MAX HARQ RETX
+      if ((*it).second.at (7).size () == 3) // MAX HARQ RETX
         {
           // HARQ should be disabled -> discard info
           return;
         }
-      
-//       move current status back at the end to maintain full history
+
+      //move current status back at the end to maintain full history
       HarqProcessInfoList_t list = (*it).second.at (0);
       for (uint8_t i = 0; i < list.size (); i++)
         {

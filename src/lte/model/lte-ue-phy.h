@@ -92,7 +92,7 @@ public:
 
   /**
    * \brief Get the PHY SAP provider
-   * \return a pointer to the SAP Provider 
+   * \return a pointer to the SAP Provider
    */
   LteUePhySapProvider* GetLteUePhySapProvider ();
 
@@ -287,7 +287,7 @@ public:
    */
   typedef void (* RsrpSinrTracedCallback)
     (uint16_t cellId, uint16_t rnti,
-     double rsrp, double sinr, uint8_t componentCarrierId);
+      double rsrp, double sinr, uint8_t componentCarrierId);
 
   /**
    * TracedCallback signature for cell RSRP and RSRQ.
@@ -363,11 +363,11 @@ private:
   void QueueSubChannelsForTransmission (std::vector <int> rbMap);
 
 
-  /** 
+  /**
    * internal method that takes care of generating CQI reports,
    * calculating the RSRP and RSRQ metrics, and generating RSRP+SINR traces
-   * 
-   * \param sinr 
+   *
+   * \param sinr
    */
   void GenerateCqiRsrpRsrq (const SpectrumValue& sinr);
 
@@ -443,10 +443,10 @@ private:
    */
   void DoSetPa (double pa);
 
-  // UE PHY SAP methods 
+  // UE PHY SAP methods
   virtual void DoSendMacPdu (Ptr<Packet> p);
   /**
-   * Send LTE control message function
+   * Send LTE conrol message function
    * \param msg the LTE control message
    */
   virtual void DoSendLteControlMessage (Ptr<LteControlMessage> msg);
@@ -494,7 +494,7 @@ private:
   LteUeCphySapUser* m_ueCphySapUser; ///< UE CPhy SAP user
 
   uint16_t  m_rnti; ///< the RNTI
- 
+
   uint8_t m_transmissionMode; ///< the transmission mode
   std::vector <double> m_txModeGain; ///< the transmit mode gain
 
@@ -530,7 +530,7 @@ private:
 
   bool m_pssReceived; ///< PSS received?
   /// PssElement structure
-  struct PssElement 
+  struct PssElement
   {
     uint16_t cellId; ///< cell ID
     double pssPsdSum; ///< PSS PSD sum
@@ -605,9 +605,9 @@ private:
    */
   TracedCallback<PhyTransmissionStatParameters> m_ulPhyTransmission;
 
-  
+
   Ptr<SpectrumValue> m_noisePsd; ///< Noise power spectral density for
-                                 ///the configured bandwidth 
+                                 ///the configured bandwidth
 
 }; // end of `class LteUePhy`
 

@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
 * Copyright (c) 2015 Danilo Abrignani
+* Copyright (c) 2016, 2018, University of Padova, Dep. of Information Engineering, SIGNET lab
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 as
@@ -17,6 +18,8 @@
 *
 * Author: Danilo Abrignani <danilo.abrignani@unibo.it>
 *
+* Modified by: Tommaso Zugno <tommasozugno@gmail.com>
+*								 Integration of Carrier Aggregation for the mmWave module
 */
 
 #include "simple-ue-component-carrier-manager.h"
@@ -39,7 +42,7 @@ NS_OBJECT_ENSURE_REGISTERED (SimpleUeComponentCarrierManager);
 
 /// SimpleUeCcmMacSapProvider class
 class SimpleUeCcmMacSapProvider : public LteMacSapProvider
-{ 
+{
 public:
   /**
    * Constructor
@@ -80,7 +83,7 @@ SimpleUeCcmMacSapProvider::ReportBufferStatus (ReportBufferStatusParameters para
 
 /// SimpleUeCcmMacSapUser class
 class SimpleUeCcmMacSapUser : public LteMacSapUser
-{ 
+{
 public:
   /**
    * Constructor
@@ -220,19 +223,31 @@ void
 SimpleUeComponentCarrierManager::DoReportBufferStatus (LteMacSapProvider::ReportBufferStatusParameters params)
 {
   NS_LOG_FUNCTION (this);
-  std::map <uint8_t, LteMacSapProvider*>::iterator it =  m_macSapProvidersMap.find (0);
-  NS_ASSERT_MSG (it != m_macSapProvidersMap.end (), "could not find Sap for ComponentCarrier ");
-  it->second->ReportBufferStatus (params);
+  for(std::map <uint8_t, LteMacSapProvider*>::iterator it = m_macSapProvidersMap.begin(); it != m_macSapProvidersMap.end(); it++)
+  {
+    if (it->first == 0)
+    {
+      // report the BSR to the primary CC
+      it->second->ReportBufferStatus (params);
+    }
+    else
+    {
+      // report the BSR to other CCs. Only the PCC sends status PDUs.
+      LteMacSapProvider::ReportBufferStatusParameters newParams = params;
+      newParams.statusPduSize = 0;
+      it->second->ReportBufferStatus (newParams);
+    }
+  }
 }
 
-void 
+void
 SimpleUeComponentCarrierManager::DoNotifyHarqDeliveryFailure ()
 {
  NS_LOG_FUNCTION (this);
 }
 
 
-void 
+void
 SimpleUeComponentCarrierManager::DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId, uint8_t componentCarrierId, uint16_t rnti, uint8_t lcid)
 {
   NS_LOG_FUNCTION (this);
@@ -275,7 +290,7 @@ SimpleUeComponentCarrierManager::DoRemoveLc (uint8_t lcid)
     }
   NS_ASSERT_MSG (res.size () != 0, "Not found in the ComponentCarrierManager maps the LCID " << lcid);
 
-  return res; 
+  return res;
 
 }
 
@@ -295,7 +310,7 @@ SimpleUeComponentCarrierManager::DoAddLc (uint8_t lcId,  LteUeCmacSapProvider::L
       elem.lcConfig = &lcConfig;
       elem.msu = m_ccmMacSapUser;
       res.insert (res.end (), elem);
-      
+
       ccLcMapIt = m_componentCarrierLcMap.find (ncc);
       if (ccLcMapIt != m_componentCarrierLcMap.end ())
         {
@@ -312,8 +327,8 @@ SimpleUeComponentCarrierManager::DoAddLc (uint8_t lcId,  LteUeCmacSapProvider::L
           ccLcMapIt->second.insert (std::pair <uint8_t, LteMacSapProvider*> (lcId, m_macSapProvidersMap.at (ncc)));
         }
     }
-  
-  return res;  
+
+  return res;
 }
 
 void
@@ -331,7 +346,7 @@ SimpleUeComponentCarrierManager::DoNotifyConnectionReconfigurationMsg ()
      //here the code to update all the Lc, since now  those should be mapped on all ComponentCarriers
      m_ccmRrcSapUser->ComponentCarrierEnabling (res);
    }
-  
+
 }
 LteMacSapUser*
 SimpleUeComponentCarrierManager::DoConfigureSignalBearer (uint8_t lcid,  LteUeCmacSapProvider::LogicalChannelConfig lcConfig, LteMacSapUser* msu)
@@ -344,11 +359,11 @@ SimpleUeComponentCarrierManager::DoConfigureSignalBearer (uint8_t lcid,  LteUeCm
       // This line will remove the former SignalBearer. It is needed in case of handover
       // since an update of the signal bearer performed.
       // Now it points on the right LteMacSapUser
-      m_lcAttached.erase (it); 
+      m_lcAttached.erase (it);
     }
   m_lcAttached.insert (std::pair<uint8_t, LteMacSapUser*> (lcid, msu));
 
   return m_ccmMacSapUser;
- } 
+ }
 
 } // end of namespace ns3

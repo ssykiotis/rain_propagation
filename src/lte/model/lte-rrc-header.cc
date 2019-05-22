@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +20,9 @@
  * Modified by:
  *          Danilo Abrignani <danilo.abrignani@unibo.it> (Carrier Aggregation - GSoC 2015)
  *          Biljana Bojovic <biljana.bojovic@cttc.es> (Carrier Aggregation)
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #include "ns3/log.h"
@@ -194,6 +198,9 @@ RrcAsn1Header::SerializeDrbToAddModList (std::list<LteRrcSap::DrbToAddMod> drbTo
 
       // Serialize logicalChannelConfig
       SerializeLogicalChannelConfig (it->logicalChannelConfig);
+
+      // MmWave MC functionalities: is_mc field
+      SerializeBoolean (it->is_mc);
     }
 }
 
@@ -221,7 +228,7 @@ RrcAsn1Header::SerializeSrbToAddModList (std::list<LteRrcSap::SrbToAddMod> srbTo
       // 2 options, selected option 0 (var "explicitValue", of type LogicalChannelConfig)
       SerializeChoice (2,0,false);
 
-      // Serialize LogicalChannelConfig 
+      // Serialize LogicalChannelConfig
       SerializeLogicalChannelConfig (it->logicalChannelConfig);
     }
 }
@@ -462,7 +469,7 @@ RrcAsn1Header::SerializeSystemInformationBlockType1 (LteRrcSap::SystemInformatio
   // Serialize plmn-IdentityList
   SerializeSequenceOf (1,6,1);
 
-  // PLMN-IdentityInfo 
+  // PLMN-IdentityInfo
   SerializeSequence (std::bitset<0> (),false);
 
   SerializePlmnIdentity (systemInformationBlockType1.cellAccessRelatedInfo.plmnIdentityInfo.plmnIdentity);
@@ -563,21 +570,21 @@ RrcAsn1Header::SerializeRadioResourceConfigCommonSib (LteRrcSap::RadioResourceCo
   // rach-ConfigCommon
   SerializeRachConfigCommon (radioResourceConfigCommonSib.rachConfigCommon);
 
-  // bcch-Config 
+  // bcch-Config
   SerializeSequence (std::bitset<0> (0),false);
   SerializeEnum (4,0); // modificationPeriodCoeff
-  // pcch-Config 
+  // pcch-Config
   SerializeSequence (std::bitset<0> (0),false);
   SerializeEnum (4,0); // defaultPagingCycle
   SerializeEnum (8,0); // nB
-  // prach-Config 
+  // prach-Config
   SerializeSequence (std::bitset<1> (0),false);
   SerializeInteger (0,0,1023); // rootSequenceIndex
-  // pdsch-ConfigCommon 
+  // pdsch-ConfigCommon
   SerializeSequence (std::bitset<0> (0),false);
   SerializeInteger (0,-60,50); // referenceSignalPower
   SerializeInteger (0,0,3); // p-b
-  // pusch-ConfigCommon 
+  // pusch-ConfigCommon
   SerializeSequence (std::bitset<0> (0),false);
   SerializeSequence (std::bitset<0> (0),false); // pusch-ConfigBasic
   SerializeInteger (1,1,4); // n-SB
@@ -589,16 +596,16 @@ RrcAsn1Header::SerializeRadioResourceConfigCommonSib (LteRrcSap::RadioResourceCo
   SerializeInteger (0,0,29); // groupAssignmentPUSCH
   SerializeBoolean (false); // sequenceHoppingEnabled
   SerializeInteger (0,0,7); // cyclicShift
-  // pucch-ConfigCommon 
+  // pucch-ConfigCommon
   SerializeSequence (std::bitset<0> (0),false);
   SerializeEnum (3,0); // deltaPUCCH-Shift
   SerializeInteger (0,0,98); // nRB-CQI
   SerializeInteger (0,0,7); // nCS-AN
   SerializeInteger (0,0,2047); // n1PUCCH-AN
-  // soundingRS-UL-ConfigCommon 
+  // soundingRS-UL-ConfigCommon
   SerializeChoice (2,0,false);
   SerializeNull (); // release
-  // uplinkPowerControlCommon 
+  // uplinkPowerControlCommon
   SerializeSequence (std::bitset<0> (0),false);
   SerializeInteger (0,-126,24); // p0-NominalPUSCH
   SerializeEnum (8,0); // alpha
@@ -610,7 +617,7 @@ RrcAsn1Header::SerializeRadioResourceConfigCommonSib (LteRrcSap::RadioResourceCo
   SerializeEnum (3,0); // deltaF-PUCCH-Format2a
   SerializeEnum (3,0); // deltaF-PUCCH-Format2b
   SerializeInteger (0,-1,6);
-  // ul-CyclicPrefixLength 
+  // ul-CyclicPrefixLength
   SerializeEnum (2,0);
 }
 
@@ -634,7 +641,29 @@ RrcAsn1Header::SerializeSystemInformationBlockType2 (LteRrcSap::SystemInformatio
   // freqInfo
   SerializeSequence (std::bitset<2> (3),false);
   SerializeInteger ((int) systemInformationBlockType2.freqInfo.ulCarrierFreq, 0, MAX_EARFCN);
-  SerializeEnum (6, BandwidthToEnum (systemInformationBlockType2.freqInfo.ulBandwidth));
+  switch (systemInformationBlockType2.freqInfo.ulBandwidth)
+    {
+    case 6:
+      SerializeEnum (6,0);
+      break;
+    case 15:
+      SerializeEnum (6,1);
+      break;
+    case 25:
+      SerializeEnum (6,2);
+      break;
+    case 50:
+      SerializeEnum (6,3);
+      break;
+    case 75:
+      SerializeEnum (6,4);
+      break;
+    case 100:
+      SerializeEnum (6,5);
+      break;
+    default:
+      SerializeEnum (6,0);
+    }
 
   SerializeInteger (29,1,32); // additionalSpectrumEmission
   // timeAlignmentTimerCommon
@@ -759,7 +788,7 @@ RrcAsn1Header::SerializeMeasResults (LteRrcSap::MeasResults measResults) const
               {
                 SerializeInteger (it->rsrqResult,0,34);
               }
-            
+
           }
       }
 }
@@ -781,11 +810,11 @@ RrcAsn1Header::SerializePlmnIdentity (uint32_t plmnId) const
       plmnId -= n * pow (10,i);
     }
 
-  // cellReservedForOperatorUse 
+  // cellReservedForOperatorUse
   SerializeEnum (2,0);
 }
 
-void 
+void
 RrcAsn1Header::SerializeRachConfigCommon (LteRrcSap::RachConfigCommon rachConfigCommon) const
 {
   // rach-ConfigCommon
@@ -846,7 +875,7 @@ RrcAsn1Header::SerializeRachConfigCommon (LteRrcSap::RachConfigCommon rachConfig
       SerializeEnum (16,15);
       break;
     default:
-      NS_FATAL_ERROR ("Wrong numberOfRA-Preambles value");
+      SerializeEnum (16,0);
     }
 
   SerializeSequence (std::bitset<0> (0),false); // powerRampingParameters
@@ -1060,11 +1089,11 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
   measConfigOptional.set (7, !measConfig.reportConfigToAddModList.empty () );
   measConfigOptional.set (6, !measConfig.measIdToRemoveList.empty () );
   measConfigOptional.set (5, !measConfig.measIdToAddModList.empty () );
-  measConfigOptional.set (4, measConfig.haveQuantityConfig ); 
-  measConfigOptional.set (3, measConfig.haveMeasGapConfig ); 
-  measConfigOptional.set (2, measConfig.haveSmeasure ); 
+  measConfigOptional.set (4, measConfig.haveQuantityConfig );
+  measConfigOptional.set (3, measConfig.haveMeasGapConfig );
+  measConfigOptional.set (2, measConfig.haveSmeasure );
   measConfigOptional.set (1, false ); // preRegistrationInfoHRPD
-  measConfigOptional.set (0, measConfig.haveSpeedStatePars ); 
+  measConfigOptional.set (0, measConfig.haveSpeedStatePars );
   SerializeSequence (measConfigOptional,true);
 
   if (!measConfig.measObjectToRemoveList.empty ())
@@ -1098,7 +1127,29 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
           SerializeInteger (it->measObjectEutra.carrierFreq, 0, MAX_EARFCN);
 
           // Serialize  allowedMeasBandwidth
-          SerializeEnum (6, BandwidthToEnum (it->measObjectEutra.allowedMeasBandwidth));
+          switch (it->measObjectEutra.allowedMeasBandwidth)
+            {
+            case 6:
+              SerializeEnum (6,0);
+              break;
+            case 15:
+              SerializeEnum (6,1);
+              break;
+            case 25:
+              SerializeEnum (6,2);
+              break;
+            case 50:
+              SerializeEnum (6,3);
+              break;
+            case 75:
+              SerializeEnum (6,4);
+              break;
+            case 100:
+              SerializeEnum (6,5);
+              break;
+            default:
+              SerializeEnum (6,0);
+            }
 
           SerializeBoolean (it->measObjectEutra.presenceAntennaPort1);
           SerializeBitstring (std::bitset<2> (it->measObjectEutra.neighCellConfig));
@@ -1238,7 +1289,7 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
           switch (it->reportConfigEutra.triggerType)
             {
             case LteRrcSap::ReportConfigEutra::PERIODICAL:
-              SerializeChoice (2, 1, false); 
+              SerializeChoice (2, 1, false);
               SerializeSequence (std::bitset<0> (),false);
               switch (it->reportConfigEutra.purpose)
                 {
@@ -1251,7 +1302,7 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
                 }
               break;
             case LteRrcSap::ReportConfigEutra::EVENT:
-            default: 
+            default:
               SerializeChoice (2, 0, false);
               SerializeSequence (std::bitset<0> (),false);
               switch (it->reportConfigEutra.eventId)
@@ -1735,23 +1786,23 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
 
             SerializeInteger (it->cellIdentification.physCellId,1,65536);
             SerializeInteger (it->cellIdentification.dlCarrierFreq,1,MAX_EARFCN);
-            
+
             //Serialize RadioResourceConfigCommonSCell
             SerializeRadioResourceConfigCommonSCell (it->radioResourceConfigCommonSCell);
-            
+
             if (it->haveRadioResourceConfigDedicatedSCell)
               {
                 //Serialize RadioResourceConfigDedicatedSCell
                 SerializeRadioResourceDedicatedSCell (it->radioResourceConfigDedicateSCell);
               }
-            
+
           }
       }
     else
       {
         //        NS_ASSERT_MSG ( this << "NonCriticalExtension.sCellsToAddModList cannot be empty ", false);
       }
-  
+
   }
   void
   RrcAsn1Header::SerializeRadioResourceConfigCommonSCell (LteRrcSap::RadioResourceConfigCommonSCell rrccsc) const
@@ -1761,7 +1812,7 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
     radioResourceConfigCommonSCell_r10.set (1,rrccsc.haveNonUlConfiguration); // NonUlConfiguration
     radioResourceConfigCommonSCell_r10.set (0,rrccsc.haveUlConfiguration); // UlConfiguration
     SerializeSequence (radioResourceConfigCommonSCell_r10,false);
-     
+
     if (rrccsc.haveNonUlConfiguration)
       {
         // 5 optional fields. Extension marker not present.
@@ -1773,21 +1824,21 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
         nonUlConfiguration_r10.set (0,0); // Tdd-Config-r10 Not Implemented
         SerializeSequence (nonUlConfiguration_r10,false);
 
-        SerializeInteger (rrccsc.nonUlConfiguration.dlBandwidth,6,100); 
-        
+        SerializeInteger (rrccsc.nonUlConfiguration.dlBandwidth,6,100);
+
         std::bitset<1> antennaInfoCommon_r10;
         antennaInfoCommon_r10.set (0,1);
         SerializeSequence (antennaInfoCommon_r10,false);
         SerializeInteger (rrccsc.nonUlConfiguration.antennaInfoCommon.antennaPortsCount,0,65536);
-        
+
         std::bitset<2> pdschConfigCommon_r10;
         pdschConfigCommon_r10.set (1,1);
         pdschConfigCommon_r10.set (0,1);
         SerializeSequence (pdschConfigCommon_r10,false);
-        
+
         SerializeInteger (rrccsc.nonUlConfiguration.pdschConfigCommon.referenceSignalPower,-60,50);
-        SerializeInteger (rrccsc.nonUlConfiguration.pdschConfigCommon.pb,0,3); 
-        
+        SerializeInteger (rrccsc.nonUlConfiguration.pdschConfigCommon.pb,0,3);
+
       }
     if (rrccsc.haveUlConfiguration)
       {
@@ -1809,16 +1860,16 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
          FreqInfo_r10.set (1,1); // UlBandwidth
          FreqInfo_r10.set (0,0); // additionalSpectrumEmissionSCell-r10 Not Implemented
          SerializeSequence (FreqInfo_r10,false);
-         
+
          SerializeInteger (rrccsc.ulConfiguration.ulFreqInfo.ulCarrierFreq,0,MAX_EARFCN);
          SerializeInteger (rrccsc.ulConfiguration.ulFreqInfo.ulBandwidth,6,100);
 
          //Serialize UlPowerControllCommonSCell
          std::bitset<2> UlPowerControlCommonSCell_r10;
-         UlPowerControlCommonSCell_r10.set (1,0); // p0-NominalPUSCH-r10 Not Implemented       
+         UlPowerControlCommonSCell_r10.set (1,0); // p0-NominalPUSCH-r10 Not Implemented
          UlPowerControlCommonSCell_r10.set (0,1); // alpha
          SerializeSequence (UlPowerControlCommonSCell_r10,false);
-         
+
          SerializeInteger (rrccsc.ulConfiguration.ulPowerControlCommonSCell.alpha,0,65536);
 
          //Serialize soundingRs-UlConfigCommon
@@ -1828,10 +1879,10 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
          std::bitset<1> prachConfigSCell_r10;
          prachConfigSCell_r10.set(0,1);
          SerializeSequence(prachConfigSCell_r10,false);
-         SerializeInteger (rrccsc.ulConfiguration.prachConfigSCell.index,0,256);          
+         SerializeInteger (rrccsc.ulConfiguration.prachConfigSCell.index,0,256);
       }
 
-     
+
   }
   void
   RrcAsn1Header::SerializeRadioResourceDedicatedSCell (LteRrcSap::RadioResourceConfigDedicatedSCell rrcdsc) const
@@ -1844,7 +1895,7 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
     LteRrcSap::PhysicalConfigDedicatedSCell pcdsc = rrcdsc.physicalConfigDedicatedSCell;
     SerializePhysicalConfigDedicatedSCell (pcdsc);
   }
-  
+
   void
   RrcAsn1Header::SerializePhysicalConfigDedicatedSCell (LteRrcSap::PhysicalConfigDedicatedSCell pcdsc) const
   {
@@ -1862,7 +1913,7 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
         nulOpt.set (1,0);  // csi-RS-Config-r10 Not Implemented
         nulOpt.set (0, pcdsc.havePdschConfigDedicated); // pdsch-ConfigDedicated-r10
         SerializeSequence (nulOpt,false);
-        
+
         if (pcdsc.haveAntennaInfoDedicated)
           {
             // Serialize antennaInfo choice
@@ -1904,14 +1955,14 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
         //Serialize Ul Configuration
         std::bitset<7> ulOpt;
         ulOpt.set (6, pcdsc.haveAntennaInfoUlDedicated);// antennaInfoUL-r10
-        ulOpt.set (5,0); // pusch-ConfigDedicatedSCell-r10 not present 
+        ulOpt.set (5,0); // pusch-ConfigDedicatedSCell-r10 not present
         ulOpt.set (4,0); // uplinkPowerControlDedicatedSCell-r10 not present
         ulOpt.set (3,0); // cqi-ReportConfigSCell-r10 not present
         ulOpt.set (2,pcdsc.haveSoundingRsUlConfigDedicated);// soundingRS-UL-ConfigDedicated-r10
         ulOpt.set (1,0);  // soundingRS-UL-ConfigDedicated-v1020 not present
         ulOpt.set (0,0); // soundingRS-UL-ConfigDedicatedAperiodic-r10 not present
         SerializeSequence (ulOpt,false);
-        
+
         if (pcdsc.haveAntennaInfoUlDedicated)
           {
             // Serialize antennaInfo choice
@@ -1974,9 +2025,9 @@ RrcAsn1Header::SerializeMeasConfig (LteRrcSap::MeasConfig measConfig) const
 
                 break;
               }
-              
+
           }
-      
+
 
       }
   }
@@ -2316,6 +2367,8 @@ RrcAsn1Header::DeserializeDrbToAddModList (std::list<LteRrcSap::DrbToAddMod> *dr
           bIterator = DeserializeLogicalChannelConfig (&drbToAddMod.logicalChannelConfig,bIterator);
         }
 
+      bIterator = DeserializeBoolean(&drbToAddMod.is_mc,bIterator);
+
       drbToAddModList->insert (drbToAddModList->end (),drbToAddMod);
     }
   return bIterator;
@@ -2573,7 +2626,7 @@ RrcAsn1Header::Print (std::ostream &os) const
     NS_LOG_FUNCTION (this);
     std::bitset<2> nonCriticalExtension_v890;
     bIterator = DeserializeSequence (&nonCriticalExtension_v890, false,bIterator);
-    
+
     if (nonCriticalExtension_v890[0])
       {
         // Continue to analyze future Release optional fields
@@ -2595,8 +2648,8 @@ RrcAsn1Header::Print (std::ostream &os) const
             for (int i = 0; i < numElems; i++)
               {
                 std::bitset<4> sCellToAddMod_r10;
-                bIterator = DeserializeSequence (&sCellToAddMod_r10, false, bIterator); 
-                
+                bIterator = DeserializeSequence (&sCellToAddMod_r10, false, bIterator);
+
                 LteRrcSap::SCellToAddMod sctam;
                 // Deserialize sCellIndex
                 NS_ASSERT (sCellToAddMod_r10[3]); // sCellIndex
@@ -2625,7 +2678,7 @@ RrcAsn1Header::Print (std::ostream &os) const
     return bIterator;
   }
 
-  Buffer::Iterator 
+  Buffer::Iterator
   RrcAsn1Header::DeserializeCellIdentification (LteRrcSap::CellIdentification *ci, Buffer::Iterator bIterator)
   {
     NS_LOG_FUNCTION (this);
@@ -2643,7 +2696,7 @@ RrcAsn1Header::Print (std::ostream &os) const
     return bIterator;
   }
 
-  Buffer::Iterator 
+  Buffer::Iterator
   RrcAsn1Header::DeserializeRadioResourceConfigCommonSCell (LteRrcSap::RadioResourceConfigCommonSCell *rrccsc, Buffer::Iterator bIterator)
   {
     NS_LOG_FUNCTION (this);
@@ -2675,7 +2728,7 @@ RrcAsn1Header::Print (std::ostream &os) const
       {
         std::bitset<7> UlConfiguration_r10;
         bIterator = DeserializeSequence (&UlConfiguration_r10,true,bIterator);
-        
+
         std::bitset<3> FreqInfo_r10;
         bIterator = DeserializeSequence (&FreqInfo_r10,false,bIterator);
         int n;
@@ -2688,17 +2741,17 @@ RrcAsn1Header::Print (std::ostream &os) const
         bIterator = DeserializeSequence (&UlPowerControlCommonSCell_r10,false,bIterator);
         bIterator = DeserializeInteger (&n,0,65536,bIterator);
         rrccsc->ulConfiguration.ulPowerControlCommonSCell.alpha = n;
-         
+
         std::bitset<1> prachConfigSCell_r10;
         bIterator = DeserializeSequence (&prachConfigSCell_r10,false,bIterator);
         bIterator = DeserializeInteger (&n,0,256,bIterator);
         rrccsc->ulConfiguration.prachConfigSCell.index = n;
-      }    
-    
+      }
+
     return bIterator;
   }
 
-  Buffer::Iterator 
+  Buffer::Iterator
   RrcAsn1Header::DeserializeRadioResourceConfigDedicatedSCell (LteRrcSap::RadioResourceConfigDedicatedSCell *rrcdsc, Buffer::Iterator bIterator)
   {
     NS_LOG_FUNCTION (this);
@@ -2709,22 +2762,22 @@ RrcAsn1Header::Print (std::ostream &os) const
     return bIterator;
   }
 
-  Buffer::Iterator 
+  Buffer::Iterator
   RrcAsn1Header::DeserializePhysicalConfigDedicatedSCell (LteRrcSap::PhysicalConfigDedicatedSCell *pcdsc, Buffer::Iterator bIterator)
   {
     NS_LOG_FUNCTION (this);
     std::bitset<2> pcdscOpt;
     bIterator = DeserializeSequence (&pcdscOpt,true,bIterator);
     pcdsc->haveNonUlConfiguration = pcdscOpt[1];
-    pcdsc->haveUlConfiguration = pcdscOpt[0];    
+    pcdsc->haveUlConfiguration = pcdscOpt[0];
     if (pcdsc->haveNonUlConfiguration)
       {
          std::bitset<4> nulOpt;
          bIterator = DeserializeSequence (&nulOpt,false,bIterator);
-         pcdsc->haveAntennaInfoDedicated = nulOpt[3];  
+         pcdsc->haveAntennaInfoDedicated = nulOpt[3];
          NS_ASSERT(!nulOpt[2]); // crossCarrierSchedulingConfig-r10 Not Implemented
          NS_ASSERT(!nulOpt[1]); // csi-RS-Config-r10 Not Implemented
-         pcdsc->havePdschConfigDedicated = nulOpt[0];  
+         pcdsc->havePdschConfigDedicated = nulOpt[0];
 
          if (pcdsc->haveAntennaInfoDedicated)
            {
@@ -2780,7 +2833,7 @@ RrcAsn1Header::Print (std::ostream &os) const
 
              bIterator = DeserializeNull (bIterator);
            }
-        
+
       }
     if (pcdsc->haveUlConfiguration)
       {
@@ -2793,7 +2846,7 @@ RrcAsn1Header::Print (std::ostream &os) const
          pcdsc->haveSoundingRsUlConfigDedicated = ulOpt[2];
          NS_ASSERT(!ulOpt[1]); // soundingRS-UL-ConfigDedicated-v1020 not present
          NS_ASSERT(!ulOpt[0]); // soundingRS-UL-ConfigDedicatedAperiodic-r10 not present
-         
+
          if (pcdsc->haveAntennaInfoUlDedicated)
            {
              // Deserialize antennaInfo
@@ -3398,16 +3451,16 @@ RrcAsn1Header::DeserializeRadioResourceConfigCommonSib (LteRrcSap::RadioResource
   // rach-ConfigCommon
   bIterator = DeserializeRachConfigCommon (&radioResourceConfigCommonSib->rachConfigCommon, bIterator);
 
-  // bcch-Config 
+  // bcch-Config
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
   bIterator = DeserializeEnum (4,&n,bIterator); // modificationPeriodCoeff
 
-  // pcch-Config 
+  // pcch-Config
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
   bIterator = DeserializeEnum (4,&n,bIterator); // defaultPagingCycle
   bIterator = DeserializeEnum (8,&n,bIterator); // nB
 
-  // prach-Config 
+  // prach-Config
   std::bitset<1> prachConfigInfoPresent;
   bIterator = DeserializeSequence (&prachConfigInfoPresent,false,bIterator);
   // prach-Config -> rootSequenceIndex
@@ -3418,7 +3471,7 @@ RrcAsn1Header::DeserializeRadioResourceConfigCommonSib (LteRrcSap::RadioResource
       // ...
     }
 
-  // pdsch-ConfigCommon 
+  // pdsch-ConfigCommon
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
   bIterator = DeserializeInteger (&n,-60,50,bIterator); // referenceSignalPower
   bIterator = DeserializeInteger (&n,0,3,bIterator); // p-b
@@ -3442,26 +3495,26 @@ RrcAsn1Header::DeserializeRadioResourceConfigCommonSib (LteRrcSap::RadioResource
   bool dummyBoolean;
   bIterator = DeserializeBoolean (&dummyBoolean,bIterator);
 
-  // ul-ReferenceSignalsPUSCH 
+  // ul-ReferenceSignalsPUSCH
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
-  // groupHoppingEnabled 
+  // groupHoppingEnabled
   bIterator = DeserializeBoolean (&dummyBoolean,bIterator);
 
-  // groupAssignmentPUSCH 
+  // groupAssignmentPUSCH
   bIterator = DeserializeInteger (&n,0,29,bIterator);
 
-  // sequenceHoppingEnabled 
+  // sequenceHoppingEnabled
   bIterator = DeserializeBoolean (&dummyBoolean,bIterator);
 
-  // cyclicShift 
+  // cyclicShift
   bIterator = DeserializeInteger (&n,0,7,bIterator);
 
-  // pucch-ConfigCommon 
-  bIterator = DeserializeEnum (3,&n,bIterator); // deltaPUCCH-Shift 
-  bIterator = DeserializeInteger (&n,0,98,bIterator); // nRB-CQI 
-  bIterator = DeserializeInteger (&n,0,7,bIterator); // nCS-AN 
-  bIterator = DeserializeInteger (&n,0,2047,bIterator); // n1PUCCH-AN 
+  // pucch-ConfigCommon
+  bIterator = DeserializeEnum (3,&n,bIterator); // deltaPUCCH-Shift
+  bIterator = DeserializeInteger (&n,0,98,bIterator); // nRB-CQI
+  bIterator = DeserializeInteger (&n,0,7,bIterator); // nCS-AN
+  bIterator = DeserializeInteger (&n,0,2047,bIterator); // n1PUCCH-AN
 
   // soundingRS-UL-ConfigCommon
   int choice;
@@ -3476,20 +3529,20 @@ RrcAsn1Header::DeserializeRadioResourceConfigCommonSib (LteRrcSap::RadioResource
       // ...
     }
 
-  // uplinkPowerControlCommon 
+  // uplinkPowerControlCommon
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
   bIterator = DeserializeInteger (&n,-126,24,bIterator); // p0-NominalPUSCH
-  bIterator = DeserializeEnum (8,&n,bIterator); // alpha 
-  bIterator = DeserializeInteger (&n,-127,-96,bIterator); // p0-NominalPUCCH 
-  //deltaFList-PUCCH 
+  bIterator = DeserializeEnum (8,&n,bIterator); // alpha
+  bIterator = DeserializeInteger (&n,-127,-96,bIterator); // p0-NominalPUCCH
+  //deltaFList-PUCCH
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
-  bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format1 
-  bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format1b 
-  bIterator = DeserializeEnum (4,&n,bIterator); // deltaF-PUCCH-Format2 
-  bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format2a 
+  bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format1
+  bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format1b
+  bIterator = DeserializeEnum (4,&n,bIterator); // deltaF-PUCCH-Format2
+  bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format2a
   bIterator = DeserializeEnum (3,&n,bIterator); // deltaF-PUCCH-Format2b
-  bIterator = DeserializeInteger (&n,-1,6,bIterator); // deltaPreambleMsg3 
- 
+  bIterator = DeserializeInteger (&n,-1,6,bIterator); // deltaPreambleMsg3
+
   // ul-CyclicPrefixLength
   bIterator = DeserializeEnum (2,&n,bIterator);
 
@@ -3668,7 +3721,7 @@ RrcAsn1Header::DeserializeMeasResults (LteRrcSap::MeasResults *measResults, Buff
              }
            measResults->measScellResultList.measResultScell.push_back (measResultScell);
           }
-        
+
       }
   return bIterator;
 }
@@ -3775,7 +3828,28 @@ RrcAsn1Header::DeserializeMeasConfig (LteRrcSap::MeasConfig * measConfig, Buffer
 
               // allowedMeasBandwidth
               bIterator = DeserializeEnum (6, &n, bIterator);
-              elem.measObjectEutra.allowedMeasBandwidth = EnumToBandwidth (n);
+              switch (n)
+                {
+                case 0:
+                  elem.measObjectEutra.allowedMeasBandwidth = 6;
+                  break;
+                case 1:
+                  elem.measObjectEutra.allowedMeasBandwidth = 15;
+                  break;
+                case 2:
+                  elem.measObjectEutra.allowedMeasBandwidth = 25;
+                  break;
+                case 3:
+                  elem.measObjectEutra.allowedMeasBandwidth = 50;
+                  break;
+                case 4:
+                  elem.measObjectEutra.allowedMeasBandwidth = 75;
+                  break;
+                case 5:
+                default:
+                  elem.measObjectEutra.allowedMeasBandwidth = 100;
+                  break;
+                }
 
               // presenceAntennaPort1
               bIterator = DeserializeBoolean (&elem.measObjectEutra.presenceAntennaPort1, bIterator);
@@ -4591,7 +4665,7 @@ RrcConnectionRequestHeader::PreSerialize () const
   SerializeEnum (8,m_establishmentCause);
 
   // Serialize spare : BIT STRING (SIZE (1))
-  SerializeBitstring (std::bitset<1> ());
+  SerializeBitstring (m_spare);
 
   // Finish serialization
   FinalizeSerialization ();
@@ -4600,7 +4674,7 @@ RrcConnectionRequestHeader::PreSerialize () const
 uint32_t
 RrcConnectionRequestHeader::Deserialize (Buffer::Iterator bIterator)
 {
-  std::bitset<1> dummy;
+  //std::bitset<1> dummy;
   std::bitset<0> optionalOrDefaultMask;
   int selectedOption;
 
@@ -4631,7 +4705,7 @@ RrcConnectionRequestHeader::Deserialize (Buffer::Iterator bIterator)
   bIterator = DeserializeEnum (8,&selectedOption,bIterator);
 
   // Deserialize spare
-  bIterator = DeserializeBitstring (&dummy,bIterator);
+  bIterator = DeserializeBitstring (&m_spare,bIterator);
 
   return GetSerializedSize ();
 }
@@ -4641,6 +4715,7 @@ RrcConnectionRequestHeader::SetMessage (LteRrcSap::RrcConnectionRequest msg)
 {
   m_mTmsi = std::bitset<32> ((uint32_t)msg.ueIdentity);
   m_mmec = std::bitset<8> ((uint32_t)(msg.ueIdentity >> 32));
+  m_spare = std::bitset<1> (msg.isMc);
   m_isDataSerialized = false;
 }
 
@@ -4649,7 +4724,7 @@ RrcConnectionRequestHeader::GetMessage () const
 {
   LteRrcSap::RrcConnectionRequest msg;
   msg.ueIdentity = (((uint64_t) m_mmec.to_ulong ()) << 32) | (m_mTmsi.to_ulong ());
-
+  msg.isMc = (bool) m_spare[0];
   return msg;
 }
 
@@ -4665,16 +4740,167 @@ RrcConnectionRequestHeader::GetMtmsi () const
   return m_mTmsi;
 }
 
+std::bitset<1>
+RrcConnectionRequestHeader::GetIsMc () const
+{
+  return m_spare;
+}
+
+//////////////////// RrcConnectionRequest class ////////////////////////
+
+// Constructor
+RrcConnectToMmWaveHeader::RrcConnectToMmWaveHeader () : RrcDlCcchMessage ()
+{
+  m_mmWaveId = std::bitset<16> (0ul);
+}
+
+// Destructor
+RrcConnectToMmWaveHeader::~RrcConnectToMmWaveHeader ()
+{
+}
+
+TypeId
+RrcConnectToMmWaveHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::RrcConnectToMmWaveHeader")
+    .SetParent<Header> ()
+    .SetGroupName("Lte")
+  ;
+  return tid;
+}
+
+void
+RrcConnectToMmWaveHeader::Print (std::ostream &os) const
+{
+  os << "MmWaveId:" << m_mmWaveId << std::endl;
+}
+
+void
+RrcConnectToMmWaveHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer ();
+
+  SerializeDlCcchMessage (4);
+
+  // Serialize mmWaveId : MMEC ::= BIT STRING (SIZE (16))
+  SerializeBitstring (m_mmWaveId);
+
+  // Finish serialization
+  FinalizeSerialization ();
+}
+
+uint32_t
+RrcConnectToMmWaveHeader::Deserialize (Buffer::Iterator bIterator)
+{
+
+  bIterator = DeserializeDlCcchMessage (bIterator);
+
+  // Deserialize mmWaveId
+  bIterator = DeserializeBitstring (&m_mmWaveId,bIterator);
+
+  return GetSerializedSize ();
+}
+
+void
+RrcConnectToMmWaveHeader::SetMessage (uint16_t mmWaveId)
+{
+  m_mmWaveId = std::bitset<16> ((uint16_t)mmWaveId);
+  m_isDataSerialized = false;
+}
+
+uint16_t
+RrcConnectToMmWaveHeader::GetMessage () const
+{
+  uint16_t mmWaveId = (uint16_t)(m_mmWaveId.to_ulong ());
+  return mmWaveId;
+}
+
+//////////////////// RrcNotifySecondaryConnectedHeader class ////////////////////////
+
+// Constructor
+RrcNotifySecondaryConnectedHeader::RrcNotifySecondaryConnectedHeader ()
+{
+  m_mmWaveId = std::bitset<16> (0ul);
+  m_mmWaveRnti = std::bitset<16> (0ul);
+}
+
+// Destructor
+RrcNotifySecondaryConnectedHeader::~RrcNotifySecondaryConnectedHeader ()
+{
+}
+
+TypeId
+RrcNotifySecondaryConnectedHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::RrcNotifySecondaryConnectedHeader")
+    .SetParent<Header> ()
+    .SetGroupName("Lte")
+  ;
+  return tid;
+}
+
+void
+RrcNotifySecondaryConnectedHeader::Print (std::ostream &os) const
+{
+  os << "MmWaveId:" << m_mmWaveId << std::endl;
+  os << "MmWaveRnti:" << m_mmWaveRnti << std::endl;
+}
+
+void
+RrcNotifySecondaryConnectedHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer ();
+
+  SerializeUlDcchMessage (5);
+
+  // Serialize mmWaveId : MMEC ::= BIT STRING (SIZE (16))
+  SerializeBitstring (m_mmWaveId);
+  SerializeBitstring (m_mmWaveRnti);
+
+  // Finish serialization
+  FinalizeSerialization ();
+}
+
+uint32_t
+RrcNotifySecondaryConnectedHeader::Deserialize (Buffer::Iterator bIterator)
+{
+
+  bIterator = DeserializeUlDcchMessage (bIterator);
+
+  // Deserialize mmWaveId
+  bIterator = DeserializeBitstring (&m_mmWaveId,bIterator);
+  bIterator = DeserializeBitstring (&m_mmWaveRnti,bIterator);
+
+  return GetSerializedSize ();
+}
+
+void
+RrcNotifySecondaryConnectedHeader::SetMessage (uint16_t mmWaveId, uint16_t mmWaveRnti)
+{
+  m_mmWaveRnti = std::bitset<16> ((uint16_t)mmWaveRnti);
+  m_mmWaveId = std::bitset<16> ((uint16_t)mmWaveId);
+  m_isDataSerialized = false;
+}
+
+std::pair<uint16_t, uint16_t>
+RrcNotifySecondaryConnectedHeader::GetMessage () const
+{
+  uint16_t mmWaveId = (uint16_t)(m_mmWaveId.to_ulong ());
+  uint16_t mmWaveRnti = (uint16_t)(m_mmWaveRnti.to_ulong ());
+
+  return std::pair<uint16_t, uint16_t>(mmWaveId, mmWaveRnti);
+}
+
 
 //////////////////// RrcConnectionSetup class ////////////////////////
 RrcConnectionSetupHeader::RrcConnectionSetupHeader ()
 {
 }
- 
+
 RrcConnectionSetupHeader::~RrcConnectionSetupHeader ()
 {
 }
- 
+
 void
 RrcConnectionSetupHeader::Print (std::ostream &os) const
 {
@@ -4798,7 +5024,7 @@ RrcConnectionSetupHeader::GetMessage () const
 {
   LteRrcSap::RrcConnectionSetup msg;
   msg.rrcTransactionIdentifier = m_rrcTransactionIdentifier;
-  msg.radioResourceConfigDedicated = m_radioResourceConfigDedicated; 
+  msg.radioResourceConfigDedicated = m_radioResourceConfigDedicated;
   return msg;
 }
 
@@ -4824,7 +5050,7 @@ std::list<LteRrcSap::DrbToAddMod>
 RrcConnectionSetupHeader::GetDrbToAddModList () const
 {
   return m_radioResourceConfigDedicated.drbToAddModList;
-} 
+}
 
 std::list<uint8_t>
 RrcConnectionSetupHeader::GetDrbToReleaseList () const
@@ -5041,6 +5267,91 @@ RrcConnectionReconfigurationCompleteHeader::GetRrcTransactionIdentifier () const
   return m_rrcTransactionIdentifier;
 }
 
+//////////////////// RrcConnectionSwitchHeader class ////////////////////////
+
+RrcConnectionSwitchHeader::RrcConnectionSwitchHeader ()
+{
+}
+
+RrcConnectionSwitchHeader::~RrcConnectionSwitchHeader ()
+{
+}
+
+void
+RrcConnectionSwitchHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer ();
+
+  // Serialize DCCH message
+  SerializeDlDcchMessage (6);
+
+  // Serialize rrc-TransactionIdentifier
+  SerializeInteger (m_msg.rrcTransactionIdentifier,0,3);
+
+  // Serialize the number of brbId
+  SerializeInteger(m_msg.drbidList.size(), 0, 255);
+
+  std::vector<uint8_t>::iterator drbIt = m_msg.drbidList.begin();
+  for(; drbIt != m_msg.drbidList.end(); ++drbIt)
+  {
+    SerializeInteger(*drbIt, 0, 255);
+  }
+
+  SerializeInteger(m_msg.useMmWaveConnection, 0, 65535);
+
+  // Finish serialization
+  FinalizeSerialization ();
+}
+
+uint32_t
+RrcConnectionSwitchHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  int n;
+  bIterator = DeserializeDlDcchMessage (bIterator);
+  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  m_msg.rrcTransactionIdentifier = (uint8_t)n;
+
+  bIterator = DeserializeInteger (&n,0,255,bIterator);
+  int listSize = n;
+
+  for(int i = 0; i < listSize; i++)
+  {
+    bIterator = DeserializeInteger (&n,0,255,bIterator);
+    uint8_t drb = (uint8_t)n;
+    m_msg.drbidList.push_back(drb);
+  }
+
+  bIterator = DeserializeInteger (&n,0,65535,bIterator);
+  m_msg.useMmWaveConnection = (uint16_t)n;
+
+  return GetSerializedSize ();
+}
+
+void
+RrcConnectionSwitchHeader::Print (std::ostream &os) const
+{
+  os << "rrcTransactionIdentifier: " << (int) m_msg.rrcTransactionIdentifier << std::endl;
+}
+
+void
+RrcConnectionSwitchHeader::SetMessage (LteRrcSap::RrcConnectionSwitch msg)
+{
+  m_msg = msg;
+  m_isDataSerialized = false;
+}
+
+LteRrcSap::RrcConnectionSwitch
+RrcConnectionSwitchHeader::GetMessage () const
+{
+  return m_msg;
+}
+
+uint8_t
+RrcConnectionSwitchHeader::GetRrcTransactionIdentifier () const
+{
+  return m_msg.rrcTransactionIdentifier;
+}
+
 //////////////////// RrcConnectionReconfigurationHeader class ////////////////////////
 
 RrcConnectionReconfigurationHeader::RrcConnectionReconfigurationHeader ()
@@ -5154,7 +5465,7 @@ RrcConnectionReconfigurationHeader::PreSerialize () const
         noncriticalExtension_v890.set (0,m_haveNonCriticalExtension); // Implemented nonCriticalExtension because compatibility with R10 - CA
         //Enable RRCCoonectionReconfiguration-v920-IEs
         SerializeSequence (noncriticalExtension_v890,false);
-  	  
+
         // Serialize NonCriticalExtension RRCConnectionReconfiguration-v920-IEs sequence:
         // 3 optional fields. Extension marker not present.
         std::bitset<3> noncriticalExtension_v920;
@@ -5163,7 +5474,7 @@ RrcConnectionReconfigurationHeader::PreSerialize () const
         //Enable RRCCoonectionReconfiguration-v1020-IEs
         noncriticalExtension_v920.set (0,m_haveNonCriticalExtension); // Implemented nonCriticalExtension because compatibility with R10 - CA
         SerializeSequence (noncriticalExtension_v920,false);
-  	  
+
         SerializeNonCriticalExtensionConfiguration (m_nonCriticalExtension); //Serializing RRCConnectionReconfiguration-r8-IEs
     }
 
@@ -5651,25 +5962,25 @@ RrcConnectionReconfigurationHeader::HavePhysicalConfigDedicated () const
   return m_radioResourceConfigDedicated.havePhysicalConfigDedicated;
 }
 
-std::list<LteRrcSap::SrbToAddMod> 
+std::list<LteRrcSap::SrbToAddMod>
 RrcConnectionReconfigurationHeader::GetSrbToAddModList () const
 {
   return m_radioResourceConfigDedicated.srbToAddModList;
 }
 
-std::list<LteRrcSap::DrbToAddMod> 
+std::list<LteRrcSap::DrbToAddMod>
 RrcConnectionReconfigurationHeader::GetDrbToAddModList () const
 {
   return m_radioResourceConfigDedicated.drbToAddModList;
 }
 
-std::list<uint8_t> 
+std::list<uint8_t>
 RrcConnectionReconfigurationHeader::GetDrbToReleaseList () const
 {
   return m_radioResourceConfigDedicated.drbToReleaseList;
 }
 
-LteRrcSap::PhysicalConfigDedicated 
+LteRrcSap::PhysicalConfigDedicated
 RrcConnectionReconfigurationHeader::GetPhysicalConfigDedicated () const
 {
   return m_radioResourceConfigDedicated.physicalConfigDedicated;
@@ -5745,9 +6056,9 @@ HandoverPreparationInfoHeader::PreSerialize () const
   // Serialize sourceSystemInformationBlockType2
   SerializeSystemInformationBlockType2 (m_asConfig.sourceSystemInformationBlockType2);
 
-  // Serialize AntennaInfoCommon 
+  // Serialize AntennaInfoCommon
   SerializeSequence (std::bitset<0> (0),false);
-  SerializeEnum (4,0); // antennaPortsCount 
+  SerializeEnum (4,0); // antennaPortsCount
 
   // Serialize sourceDlCarrierFreq
   SerializeInteger (m_asConfig.sourceDlCarrierFreq,0,MAX_EARFCN);
@@ -6940,7 +7251,7 @@ RrcUlCcchMessage::DeserializeUlCcchMessage (Buffer::Iterator bIterator)
   else if (n == 0)
     {
       // Deserialize c1
-      bIterator = DeserializeChoice (2,false,&m_messageType,bIterator);
+      bIterator = DeserializeChoice (3,false,&m_messageType,bIterator);
     }
 
   return bIterator;
@@ -6953,7 +7264,7 @@ RrcUlCcchMessage::SerializeUlCcchMessage (int messageType) const
   // Choose c1
   SerializeChoice (2,0,false);
   // Choose message type
-  SerializeChoice (2,messageType,false);
+  SerializeChoice (3,messageType,false);
 }
 
 ///////////////////  RrcDlCcchMessage //////////////////////////////////
@@ -7001,7 +7312,7 @@ RrcDlCcchMessage::DeserializeDlCcchMessage (Buffer::Iterator bIterator)
   else if (n == 0)
     {
       // Deserialize c1
-      bIterator = DeserializeChoice (4,false,&m_messageType,bIterator);
+      bIterator = DeserializeChoice (5,false,&m_messageType,bIterator);
     }
 
   return bIterator;
@@ -7014,8 +7325,7 @@ RrcDlCcchMessage::SerializeDlCcchMessage (int messageType) const
   // Choose c1
   SerializeChoice (2,0,false);
   // Choose message type
-  SerializeChoice (4,messageType,false);
+  SerializeChoice (5,messageType,false);
 }
 
 } // namespace ns3
-

@@ -137,7 +137,7 @@ class LteTestRrc : public Object
     * \brief Set the device
     * \param device the device
     */
-    void SetDevice (Ptr<NetDevice> device);
+  void SetDevice (Ptr<NetDevice> device);
 
   private:
     /**
@@ -177,7 +177,7 @@ class LteTestPdcp : public Object
 {
   /// allow LteRlcSpecificLteRlcSapUser<LteTestPdcp> class friend access
   friend class LteRlcSpecificLteRlcSapUser<LteTestPdcp>;
-  
+
   public:
   /**
    * \brief Get the type ID.
@@ -221,12 +221,12 @@ class LteTestPdcp : public Object
      * Interface forwarded by LteRlcSapUser
      * \param p the PDCP PDU packet received
      */
-    virtual void DoReceivePdcpPdu (Ptr<Packet> p);
+  virtual void DoReceivePdcpPdu (Ptr<Packet> p);
 
     LteRlcSapUser* m_rlcSapUser; ///< RLC SAP user
     LteRlcSapProvider* m_rlcSapProvider; ///< RLC SAP provider
 
-    std::string m_receivedData; ///< the received data 
+    std::string m_receivedData; ///< the received data
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -430,15 +430,15 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  /** 
+  /**
    * Set the S1 SAP Provider
-   * 
+   *
    * \param s the S1 SAP Provider
    */
   void SetS1SapProvider (EpcEnbS1SapProvider* s);
 
-  /** 
-   * 
+  /**
+   *
    * \return the S1 SAP user
    */
   EpcEnbS1SapUser* GetS1SapUser ();
@@ -455,11 +455,11 @@ private:
    * Path switch request acknowledge function
    * \param params EpcEnbS1SapUser::PathSwitchRequestAcknowledgeParameters
    */
-  void DoPathSwitchRequestAcknowledge (EpcEnbS1SapUser::PathSwitchRequestAcknowledgeParameters params);  
-  
+  void DoPathSwitchRequestAcknowledge (EpcEnbS1SapUser::PathSwitchRequestAcknowledgeParameters params);
+
   EpcEnbS1SapProvider* m_s1SapProvider; ///< S1 SAP provider
   EpcEnbS1SapUser* m_s1SapUser; ///< S1 SAP user
-  
+
 
 };
 

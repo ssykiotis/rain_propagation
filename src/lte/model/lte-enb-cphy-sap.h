@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011, 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,12 +18,16 @@
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>,
  *         Marco Miozzo <mmiozzo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #ifndef LTE_ENB_CPHY_SAP_H
 #define LTE_ENB_CPHY_SAP_H
 
 #include <stdint.h>
+#include <map>
 #include <ns3/ptr.h>
 
 #include <ns3/lte-rrc-sap.h>
@@ -41,14 +46,14 @@ class LteEnbCphySapProvider
 {
 public:
 
-  /** 
+  /**
    * destructor
    */
   virtual ~LteEnbCphySapProvider ();
 
-  /** 
-   * 
-   * 
+  /**
+   *
+   *
    * \param cellId the Cell Identifier
    */
   virtual void SetCellId (uint16_t cellId) = 0;
@@ -64,21 +69,21 @@ public:
    * \param dlEarfcn the DL EARFCN
    */
   virtual void SetEarfcn (uint32_t ulEarfcn, uint32_t dlEarfcn) = 0;
-  
-  /** 
+
+  /**
    * Add a new UE to the cell
-   * 
+   *
    * \param rnti the UE id relative to this cell
    */
   virtual void AddUe (uint16_t rnti) = 0;
 
-  /** 
-   * Remove an UE from the cell
-   * 
+  /**
+  * Remove an UE from the cell
+   *
    * \param rnti the UE id relative to this cell
    */
   virtual void RemoveUe (uint16_t rnti) = 0;
-  
+
   /**
    * Set the UE transmission power offset P_A
    *
@@ -99,8 +104,8 @@ public:
    */
   virtual void SetSrsConfigurationIndex (uint16_t rnti, uint16_t srsCi) = 0;
 
-  /** 
-   * 
+  /**
+   *
    * \param mib the Master Information Block to be sent on the BCH
    */
   virtual void SetMasterInformationBlock (LteRrcSap::MasterInformationBlock mib) = 0;
@@ -128,11 +133,19 @@ public:
 class LteEnbCphySapUser
 {
 public:
-  
-  /** 
+
+  /**
    * destructor
    */
   virtual ~LteEnbCphySapUser ();
+
+  struct UeAssociatedSinrInfo
+  {
+    uint8_t componentCarrierId;
+    std::map<uint64_t, double> ueImsiSinrMap;
+  };
+
+  virtual void UpdateUeSinrEstimate(LteEnbCphySapUser::UeAssociatedSinrInfo info) = 0;
 
 };
 
@@ -140,7 +153,7 @@ public:
 /**
  * Template for the implementation of the LteEnbCphySapProvider as a member
  * of an owner class of type C to which all methods are forwarded
- * 
+ *
  */
 template <class C>
 class MemberLteEnbCphySapProvider : public LteEnbCphySapProvider
@@ -165,7 +178,7 @@ public:
   virtual void SetMasterInformationBlock (LteRrcSap::MasterInformationBlock mib);
   virtual void SetSystemInformationBlockType1 (LteRrcSap::SystemInformationBlockType1 sib1);
   virtual int8_t GetReferenceSignalPower ();
-  
+
 private:
   MemberLteEnbCphySapProvider ();
   C* m_owner; ///< the owner class
@@ -183,7 +196,7 @@ MemberLteEnbCphySapProvider<C>::MemberLteEnbCphySapProvider ()
 }
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::SetCellId (uint16_t cellId)
 {
   m_owner->DoSetCellId (cellId);
@@ -191,35 +204,35 @@ MemberLteEnbCphySapProvider<C>::SetCellId (uint16_t cellId)
 
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::SetBandwidth (uint8_t ulBandwidth, uint8_t dlBandwidth)
 {
   m_owner->DoSetBandwidth (ulBandwidth, dlBandwidth);
 }
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::SetEarfcn (uint32_t ulEarfcn, uint32_t dlEarfcn)
 {
   m_owner->DoSetEarfcn (ulEarfcn, dlEarfcn);
 }
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::AddUe (uint16_t rnti)
 {
   m_owner->DoAddUe (rnti);
 }
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::RemoveUe (uint16_t rnti)
 {
   m_owner->DoRemoveUe (rnti);
 }
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::SetPa (uint16_t rnti, double pa)
 {
   m_owner->DoSetPa (rnti, pa);
@@ -233,14 +246,14 @@ MemberLteEnbCphySapProvider<C>::SetTransmissionMode (uint16_t  rnti, uint8_t txM
 }
 
 template <class C>
-void 
+void
 MemberLteEnbCphySapProvider<C>::SetSrsConfigurationIndex (uint16_t  rnti, uint16_t srsCi)
 {
   m_owner->DoSetSrsConfigurationIndex (rnti, srsCi);
 }
 
-template <class C> 
-void 
+template <class C>
+void
 MemberLteEnbCphySapProvider<C>::SetMasterInformationBlock (LteRrcSap::MasterInformationBlock mib)
 {
   m_owner->DoSetMasterInformationBlock (mib);
@@ -263,7 +276,7 @@ MemberLteEnbCphySapProvider<C>::GetReferenceSignalPower ()
 /**
  * Template for the implementation of the LteEnbCphySapUser as a member
  * of an owner class of type C to which all methods are forwarded
- * 
+ *
  */
 template <class C>
 class MemberLteEnbCphySapUser : public LteEnbCphySapUser
@@ -275,6 +288,7 @@ public:
    * \param owner the owner class
    */
   MemberLteEnbCphySapUser (C* owner);
+  virtual void UpdateUeSinrEstimate(UeAssociatedSinrInfo info);
 
   // methods inherited from LteEnbCphySapUser go here
 
@@ -294,6 +308,12 @@ MemberLteEnbCphySapUser<C>::MemberLteEnbCphySapUser ()
 {
 }
 
+template <class C>
+void
+MemberLteEnbCphySapUser<C>::UpdateUeSinrEstimate(UeAssociatedSinrInfo info)
+{
+  return m_owner->DoUpdateUeSinrEstimate(info);
+}
 
 
 

@@ -148,7 +148,7 @@ public:
 
   /**
    * \brief set the resource blocks (a.k.a. sub channels) to be used in the downlink for transmission
-   * 
+   *
    * \param mask a vector of integers, if the i-th value is j it means
    * that the j-th resource block is used for transmission in the
    * downlink. If there is no i such that the value of the i-th
@@ -167,7 +167,7 @@ public:
    */
   void SetDownlinkSubChannelsWithPowerAllocation (std::vector<int> mask);
   /**
-   * 
+   *
    * \return  a vector of integers, if the i-th value is j it means
    * that the j-th resource block is used for transmission in the
    * downlink. If there is no i such that the value of the i-th
@@ -273,8 +273,8 @@ public:
   void PhyPduReceived (Ptr<Packet> p);
 
   /**
-   * \brief PhySpectrum received a new list of LteControlMessage
-   */
+  * \brief PhySpectrum received a new list of LteControlMessage
+  */
   virtual void ReceiveLteControlMessageList (std::list<Ptr<LteControlMessage> >);
 
   // inherited from LtePhy
@@ -286,9 +286,9 @@ public:
 
 
   /**
-   * \brief PhySpectrum generated a new UL HARQ feedback
+  * \brief PhySpectrum generated a new UL HARQ feedback
    * \param mes UlInfoListElement_s
-   */
+  */
   virtual void ReceiveLteUlHarqFeedback (UlInfoListElement_s mes);
 
   /**

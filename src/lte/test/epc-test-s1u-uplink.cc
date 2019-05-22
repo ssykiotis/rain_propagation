@@ -17,9 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * The original version of UdpClient is by  Amine Ismail
- * <amine.ismail@sophia.inria.fr> <amine.ismail@udcast.com> 
+ * <amine.ismail@sophia.inria.fr> <amine.ismail@udcast.com>
  * The rest of the code (including modifying UdpClient into
- *  EpsBearerTagUdpClient) is by Nicola Baldo <nbaldo@cttc.es> 
+ *  EpsBearerTagUdpClient) is by Nicola Baldo <nbaldo@cttc.es>
  */
 
 
@@ -62,7 +62,7 @@ NS_LOG_COMPONENT_DEFINE ("EpcTestS1uUplink");
  * uplink. But in this test we don't have the LteEnbNetDevice, because
  * we test the S1-U interface with simpler devices to make sure it
  * just works.
- * 
+ *
  */
 class EpsBearerTagUdpClient : public Application
 {
@@ -77,7 +77,7 @@ public:
   EpsBearerTagUdpClient ();
   /**
    * Constructor
-   * 
+   *
    * \param rnti the RNTI
    * \param bid the BID
    */
@@ -111,9 +111,9 @@ private:
   uint32_t m_count; ///< maximum number of packets to send
   Time m_interval; ///< the time between packets
   uint32_t m_size; ///< the size of packets generated
-  
+
   uint32_t m_sent; ///< number of packets sent
-  Ptr<Socket> m_socket; ///< the socket 
+  Ptr<Socket> m_socket; ///< the socket
   Ipv4Address m_peerAddress; ///< the peer address of the outbound packets
   uint16_t m_peerPort; ///< the destination port of the outbound packets
   EventId m_sendEvent; ///< the send event
@@ -279,7 +279,7 @@ struct UeUlTestData
   uint32_t pktSize; ///< the packet size
   uint16_t rnti; ///< the RNTI
   uint8_t bid; ///< the BID
- 
+
   Ptr<PacketSink> serverApp; ///< the server application
   Ptr<Application> clientApp; ///< the client application
 };
@@ -296,7 +296,7 @@ struct UeUlTestData
  * \ingroup lte-test
  * \ingroup tests
  *
- * \brief Custom structure containing information about data sent in the uplink 
+ * \brief Custom structure containing information about data sent in the uplink
  * of eNodeB. Includes the information of the data sent in the uplink per UE.
  */
 struct EnbUlTestData
@@ -325,7 +325,9 @@ public:
 
 private:
   virtual void DoRun (void);
+  void InitialMsg (Ptr<EpcEnbApplication> epcApp, uint64_t imsi);
   std::vector<EnbUlTestData> m_enbUlTestData; ///< ENB UL test data
+  std::vector<Ptr<EpcTestRrc>> rrcVector;
 };
 
 
@@ -339,7 +341,14 @@ EpcS1uUlTestCase::~EpcS1uUlTestCase ()
 {
 }
 
-void 
+void
+EpcS1uUlTestCase::InitialMsg (Ptr<EpcEnbApplication> enbApp, uint64_t imsi)
+{
+
+  enbApp->GetS1SapProvider ()->InitialUeMessage (imsi, (uint16_t) imsi);
+}
+
+void
 EpcS1uUlTestCase::DoRun ()
 {
   Ptr<PointToPointEpcHelper> epcHelper = CreateObject<PointToPointEpcHelper> ();
@@ -349,7 +358,7 @@ EpcS1uUlTestCase::DoRun ()
   Config::SetDefault ("ns3::CsmaNetDevice::Mtu", UintegerValue (30000));
   Config::SetDefault ("ns3::PointToPointNetDevice::Mtu", UintegerValue (30000));
   epcHelper->SetAttribute ("S1uLinkMtu", UintegerValue (30000));
-  
+
   // Create a single RemoteHost
   NodeContainer remoteHostContainer;
   remoteHostContainer.Create (1);
@@ -360,22 +369,22 @@ EpcS1uUlTestCase::DoRun ()
   // Create the internet
   PointToPointHelper p2ph;
   p2ph.SetDeviceAttribute ("DataRate",  DataRateValue (DataRate ("100Gb/s")));
-  NetDeviceContainer internetDevices = p2ph.Install (pgw, remoteHost);  
+  NetDeviceContainer internetDevices = p2ph.Install (pgw, remoteHost);
   Ipv4AddressHelper ipv4h;
   ipv4h.SetBase ("1.0.0.0", "255.0.0.0");
   Ipv4InterfaceContainer internetNodesIpIfaceContainer = ipv4h.Assign (internetDevices);
-  
+
   // setup default gateway for the remote hosts
   Ipv4StaticRoutingHelper ipv4RoutingHelper;
   Ptr<Ipv4StaticRouting> remoteHostStaticRouting = ipv4RoutingHelper.GetStaticRouting (remoteHost->GetObject<Ipv4> ());
 
   // hardcoded UE addresses for now
   remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("7.0.0.0"), Ipv4Mask ("255.255.255.0"), 1);
-  
+
 
 
   uint16_t udpSinkPort = 1234;
-    
+
   NodeContainer enbs;
   uint16_t cellIdCounter = 0;
 
@@ -384,7 +393,7 @@ EpcS1uUlTestCase::DoRun ()
        ++enbit)
     {
       Ptr<Node> enb = CreateObject<Node> ();
-      enbs.Add (enb);      
+      enbs.Add (enb);
 
       // we test EPC without LTE, hence we use:
       // 1) a CSMA network to simulate the cell
@@ -399,22 +408,23 @@ EpcS1uUlTestCase::DoRun ()
       cell.Add (ues);
       cell.Add (enb);
 
-      CsmaHelper csmaCell;      
+      CsmaHelper csmaCell;
       NetDeviceContainer cellDevices = csmaCell.Install (cell);
 
-      // the eNB's CSMA NetDevice acting as an LTE NetDevice. 
+      // the eNB's CSMA NetDevice acting as an LTE NetDevice.
       Ptr<NetDevice> enbDevice = cellDevices.Get (cellDevices.GetN () - 1);
 
       // Note that the EpcEnbApplication won't care of the actual NetDevice type
-      epcHelper->AddEnb (enb, enbDevice, cellId);      
-      
+      epcHelper->AddEnb (enb, enbDevice, cellId);
+
        // Plug test RRC entity
       Ptr<EpcEnbApplication> enbApp = enb->GetApplication (0)->GetObject<EpcEnbApplication> ();
       NS_ASSERT_MSG (enbApp != 0, "cannot retrieve EpcEnbApplication");
       Ptr<EpcTestRrc> rrc = CreateObject<EpcTestRrc> ();
+      rrcVector.push_back(rrc);
       rrc->SetS1SapProvider (enbApp->GetS1SapProvider ());
       enbApp->SetS1SapUser (rrc->GetS1SapUser ());
-      
+
       // we install the IP stack on UEs only
       InternetStackHelper internet;
       internet.Install (ues);
@@ -429,7 +439,7 @@ EpcS1uUlTestCase::DoRun ()
 
           // disable IP Forwarding on the UE. This is because we use
           // CSMA broadcast MAC addresses for this test. The problem
-          // won't happen with a LteUeNetDevice. 
+          // won't happen with a LteUeNetDevice.
           Ptr<Ipv4> ueIpv4 = ue->GetObject<Ipv4> ();
           ueIpv4->SetAttribute ("IpForward", BooleanValue (false));
 
@@ -443,28 +453,28 @@ EpcS1uUlTestCase::DoRun ()
           // the eNB uses CSMA but without IP, we fool the UE's ARP
           // cache into thinking that the IP address of the GW can be
           // reached by sending a CSMA packet to the broadcast
-          // address, so the eNB will get it.       
+          // address, so the eNB will get it.
           int32_t ueLteIpv4IfIndex = ueIpv4->GetInterfaceForDevice (ueLteDevice);
           Ptr<Ipv4L3Protocol> ueIpv4L3Protocol = ue->GetObject<Ipv4L3Protocol> ();
           Ptr<Ipv4Interface> ueLteIpv4Iface = ueIpv4L3Protocol->GetInterface (ueLteIpv4IfIndex);
-          Ptr<ArpCache> ueArpCache = ueLteIpv4Iface->GetArpCache (); 
-          ueArpCache->SetAliveTimeout (Seconds (1000));          
+          Ptr<ArpCache> ueArpCache = ueLteIpv4Iface->GetArpCache ();
+          ueArpCache->SetAliveTimeout (Seconds (1000));
           ArpCache::Entry* arpCacheEntry = ueArpCache->Add (gwAddr);
           arpCacheEntry->SetMacAddress (Mac48Address::GetBroadcast ());
           arpCacheEntry->MarkPermanent ();
-  
-          
-          PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", 
-                                             InetSocketAddress (Ipv4Address::GetAny (), udpSinkPort));          
+
+
+          PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory",
+                                             InetSocketAddress (Ipv4Address::GetAny (), udpSinkPort));
           ApplicationContainer sinkApp = packetSinkHelper.Install (remoteHost);
           sinkApp.Start (Seconds (1.0));
           sinkApp.Stop (Seconds (10.0));
           enbit->ues[u].serverApp = sinkApp.Get (0)->GetObject<PacketSink> ();
-          
+
           Time interPacketInterval = Seconds (0.01);
           Ptr<EpsBearerTagUdpClient> client = CreateObject<EpsBearerTagUdpClient> (enbit->ues[u].rnti, enbit->ues[u].bid);
           client->SetAttribute ("RemoteAddress", Ipv4AddressValue (internetNodesIpIfaceContainer.GetAddress (1)));
-          client->SetAttribute ("RemotePort", UintegerValue (udpSinkPort));          
+          client->SetAttribute ("RemotePort", UintegerValue (udpSinkPort));
           client->SetAttribute ("MaxPackets", UintegerValue (enbit->ues[u].numPkts));
           client->SetAttribute ("Interval", TimeValue (interPacketInterval));
           client->SetAttribute ("PacketSize", UintegerValue (enbit->ues[u].pktSize));
@@ -472,20 +482,21 @@ EpcS1uUlTestCase::DoRun ()
           ApplicationContainer clientApp;
           clientApp.Add (client);
           clientApp.Start (Seconds (2.0));
-          clientApp.Stop (Seconds (10.0));   
+          clientApp.Stop (Seconds (10.0));
           enbit->ues[u].clientApp = client;
 
           uint64_t imsi = u+1;
           epcHelper->AddUe (ueLteDevice, imsi);
           epcHelper->ActivateEpsBearer (ueLteDevice, imsi, EpcTft::Default (), EpsBearer (EpsBearer::NGBR_VIDEO_TCP_DEFAULT));
-          enbApp->GetS1SapProvider ()->InitialUeMessage (imsi, (uint16_t) imsi);
-          
+
+          Simulator::Schedule (Seconds(0.01), &EpcS1uUlTestCase::InitialMsg, this, enbApp, imsi);
+
           // need this since all sinks are installed in the same node
-          ++udpSinkPort; 
-        } 
-            
-    } 
-  
+          ++udpSinkPort;
+        }
+
+    }
+
   Simulator::Run ();
 
   for (std::vector<EnbUlTestData>::iterator enbit = m_enbUlTestData.begin ();
@@ -497,9 +508,9 @@ EpcS1uUlTestCase::DoRun ()
            ++ueit)
         {
           NS_TEST_ASSERT_MSG_EQ (ueit->serverApp->GetTotalRx (), (ueit->numPkts) * (ueit->pktSize), "wrong total received bytes");
-        }      
+        }
     }
-  
+
   Simulator::Destroy ();
 }
 
@@ -514,13 +525,13 @@ class EpcS1uUlTestSuite : public TestSuite
 {
 public:
   EpcS1uUlTestSuite ();
-  
+
 } g_epcS1uUlTestSuiteInstance;
 
 EpcS1uUlTestSuite::EpcS1uUlTestSuite ()
   : TestSuite ("epc-s1u-uplink", SYSTEM)
-{  
-  std::vector<EnbUlTestData> v1;  
+{
+  std::vector<EnbUlTestData> v1;
   EnbUlTestData e1;
   UeUlTestData f1 (1, 100, 1, 1);
   e1.ues.push_back (f1);
@@ -528,7 +539,7 @@ EpcS1uUlTestSuite::EpcS1uUlTestSuite ()
   AddTestCase (new EpcS1uUlTestCase ("1 eNB, 1UE", v1), TestCase::QUICK);
 
 
-  std::vector<EnbUlTestData> v2;  
+  std::vector<EnbUlTestData> v2;
   EnbUlTestData e2;
   UeUlTestData f2_1 (1, 100, 1, 1);
   e2.ues.push_back (f2_1);
@@ -538,7 +549,7 @@ EpcS1uUlTestSuite::EpcS1uUlTestSuite ()
   AddTestCase (new EpcS1uUlTestCase ("1 eNB, 2UEs", v2), TestCase::QUICK);
 
 
-  std::vector<EnbUlTestData> v3;  
+  std::vector<EnbUlTestData> v3;
   v3.push_back (e1);
   v3.push_back (e2);
   AddTestCase (new EpcS1uUlTestCase ("2 eNBs", v3), TestCase::QUICK);
@@ -551,38 +562,38 @@ EpcS1uUlTestSuite::EpcS1uUlTestSuite ()
   e3.ues.push_back (f3_2);
   UeUlTestData f3_3 (1, 1, 3, 1);
   e3.ues.push_back (f3_2);
-  std::vector<EnbUlTestData> v4;  
+  std::vector<EnbUlTestData> v4;
   v4.push_back (e3);
   v4.push_back (e1);
   v4.push_back (e2);
   AddTestCase (new EpcS1uUlTestCase ("3 eNBs", v4), TestCase::QUICK);
 
-  std::vector<EnbUlTestData> v5;  
+  std::vector<EnbUlTestData> v5;
   EnbUlTestData e5;
   UeUlTestData f5 (10, 3000, 1, 1);
   e5.ues.push_back (f5);
   v5.push_back (e5);
   AddTestCase (new EpcS1uUlTestCase ("1 eNB, 10 pkts 3000 bytes each", v5), TestCase::QUICK);
 
-  std::vector<EnbUlTestData> v6;  
+  std::vector<EnbUlTestData> v6;
   EnbUlTestData e6;
   UeUlTestData f6 (50, 3000, 1, 1);
   e6.ues.push_back (f6);
   v6.push_back (e6);
   AddTestCase (new EpcS1uUlTestCase ("1 eNB, 50 pkts 3000 bytes each", v6), TestCase::QUICK);
 
-  std::vector<EnbUlTestData> v7;  
+  std::vector<EnbUlTestData> v7;
   EnbUlTestData e7;
   UeUlTestData f7 (10, 15000, 1, 1);
   e7.ues.push_back (f7);
   v7.push_back (e7);
   AddTestCase (new EpcS1uUlTestCase ("1 eNB, 10 pkts 15000 bytes each", v7), TestCase::QUICK);
 
-  std::vector<EnbUlTestData> v8;  
+  std::vector<EnbUlTestData> v8;
   EnbUlTestData e8;
   UeUlTestData f8 (100, 15000, 1, 1);
   e8.ues.push_back (f8);
   v8.push_back (e8);
   AddTestCase (new EpcS1uUlTestCase ("1 eNB, 100 pkts 15000 bytes each", v8), TestCase::QUICK);
-  
+
 }

@@ -132,7 +132,7 @@ LteUeNetDevice::DoDispose (void)
 
   m_rrc->Dispose ();
   m_rrc = 0;
-  
+
   m_nas->Dispose ();
   m_nas = 0;
   for (uint32_t i = 0; i < m_ccMap.size (); i++)
@@ -267,7 +267,7 @@ LteUeNetDevice::SetCcMap (std::map< uint8_t, Ptr<ComponentCarrierUe> > ccm)
   m_ccMap = ccm;
 }
 
-void 
+void
 LteUeNetDevice::DoInitialize (void)
 {
   NS_LOG_FUNCTION (this);
@@ -291,7 +291,7 @@ LteUeNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t protocol
     {
       NS_LOG_INFO ("unsupported protocol " << protocolNumber << ", only IPv4 and IPv6 are supported");
       return true;
-    }  
+    }
   return m_nas->Send (packet);
 }
 

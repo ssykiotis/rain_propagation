@@ -291,7 +291,7 @@ LteNetDevice::Receive (Ptr<Packet> p)
   ipType = (ipType>>4) & 0x0f;
 
   if (ipType == 0x04)
-    m_rxCallback (this, p, Ipv4L3Protocol::PROT_NUMBER, Address ());
+  m_rxCallback (this, p, Ipv4L3Protocol::PROT_NUMBER, Address ());
   else if (ipType == 0x06)
     m_rxCallback (this, p, Ipv6L3Protocol::PROT_NUMBER, Address ());
   else

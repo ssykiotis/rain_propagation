@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #ifndef EPC_UE_NAS_H
@@ -37,12 +41,12 @@ class EpcUeNas : public Object
   friend class MemberLteAsSapUser<EpcUeNas>;
 public:
 
-  /** 
+  /**
    * Constructor
    */
   EpcUeNas ();
 
-  /** 
+  /**
    * Destructor
    */
   virtual ~EpcUeNas ();
@@ -56,15 +60,15 @@ public:
   static TypeId GetTypeId (void);
 
 
-  /** 
-   * 
+  /**
+   *
    * \param dev the UE NetDevice
    */
   void SetDevice (Ptr<NetDevice> dev);
 
-  /** 
-   * 
-   * 
+  /**
+   *
+   *
    * \param imsi the unique UE identifier
    */
   void SetImsi (uint64_t imsi);
@@ -96,6 +100,13 @@ public:
   LteAsSapUser* GetAsSapUser ();
 
   /**
+   * Set the SAP provider to interact with the MmWave light RRC entity (if set)
+   *
+   * \param s the AS SAP provider
+   */
+  void SetMmWaveAsSapProvider (LteAsSapProvider* s);
+
+  /**
    * set the callback used to forward data packets up the stack
    *
    * \param cb the callback
@@ -111,7 +122,7 @@ public:
 
   /**
    * \brief Causes NAS to tell AS to go to ACTIVE state.
-   * 
+   *
    * The end result is equivalent with EMM Registered + ECM Connected states.
    */
   void Connect ();
@@ -127,27 +138,38 @@ public:
    * RRC to be camped on a specific eNB.
    */
   void Connect (uint16_t cellId, uint32_t dlEarfcn);
- 
-  /** 
+
+  /**
+   * \brief Causes NAS to tell AS to camp to a specific cell and go to ACTIVE
+   *        state. It also specify which is the cellId for the MmWave BS to which
+   *        the UE will connect later on
+   * \param cellId the id of the eNB to camp on
+   * \param dlEarfcn the DL frequency of the eNB
+   * \param mmWaveCellId the id of the MmWave cell
+   *
+   */
+  void ConnectMc (uint16_t cellId, uint16_t dlEarfcn, uint16_t mmWaveCellId);
+
+  /**
    * instruct the NAS to disconnect
-   * 
+   *
    */
   void Disconnect ();
 
 
-  /** 
+  /**
    * Activate an EPS bearer
-   * 
+   *
    * \param bearer the characteristics of the bearer to be created
    * \param tft the TFT identifying the traffic that will go on this bearer
    */
   void ActivateEpsBearer (EpsBearer bearer, Ptr<EpcTft> tft);
 
-  /** 
+  /**
    * Enqueue an IP packet on the proper bearer for uplink transmission
-   * 
+   *
    * \param p the packet
-   * 
+   *
    * \return true if successful, false if an error occurred
    */
   bool Send (Ptr<Packet> p);
@@ -156,9 +178,9 @@ public:
   /**
    * Definition of NAS states as per "LTE - From theory to practice",
    * Section 3.2.3.2 "Connection Establishment and Release"
-   * 
+   *
    */
-  enum State 
+  enum State
   {
     OFF = 0,
     ATTACHING,
@@ -181,12 +203,15 @@ public:
    */
   typedef void (* StateTracedCallback)
     (const State oldState, const State newState);
- 
+
 private:
 
   // LTE AS SAP methods
   /// Notify successful connection
-  void DoNotifyConnectionSuccessful ();
+
+  void DoNotifyConnectionSuccessful (uint16_t rnti);
+  void DoNotifyHandoverSuccessful (uint16_t rnti, uint16_t mmWaveCellId);
+  void DoNotifyConnectToMmWave (uint16_t mmWaveCellId);
   /// Notify connection failed
   void DoNotifyConnectionFailed ();
   /// Notify connection released
@@ -196,6 +221,8 @@ private:
    * \param packet the packet
    */
   void DoRecvData (Ptr<Packet> packet);
+  void DoNotifySecondaryCellHandoverStarted (uint16_t oldRnti, uint16_t newRnti, uint16_t mmWaveCellId, LteRrcSap::RadioResourceConfigDedicated rrcd);
+
 
   // internal methods
   /**
@@ -233,6 +260,7 @@ private:
   LteAsSapProvider* m_asSapProvider;
   /// LTE SAP user
   LteAsSapUser* m_asSapUser;
+  LteAsSapProvider* m_mmWaveAsSapProvider;
 
   uint8_t m_bidCounter; ///< bid counter
   EpcTftClassifier m_tftClassifier; ///< tft classifier
@@ -247,6 +275,9 @@ private:
   };
 
   std::list<BearerToBeActivated> m_bearersToBeActivatedList; ///< bearers to be activated list
+
+  uint16_t m_mmWaveCellId;
+  uint16_t m_dlEarfcn; // TODO maybe useless
 
 };
 

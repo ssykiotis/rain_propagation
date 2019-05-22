@@ -28,13 +28,12 @@
 
 using namespace ns3;
 
-
 /**
  * \ingroup lte-test
  * \ingroup tests
  *
- * \brief Test suite for the interference test when using different 
- * frequency reuse algorithms.Check if the interfence values correspond to 
+ * \brief Test suite for the interference test when using different
+ * frequency reuse algorithms.Check if the interfence values correspond to
  * theoretical values.
  */
 class LteInterferenceFrTestSuite : public TestSuite
@@ -48,7 +47,7 @@ public:
  * \ingroup lte-test
  * \ingroup tests
  *
- * \brief Lte interference test when using hard frequency reuse algorithm. Check 
+ * \brief Lte interference test when using hard frequency reuse algorithm. Check
  * if the interfence values correspond to theoretical values.
  */
 class LteInterferenceHardFrTestCase : public TestCase
@@ -72,6 +71,7 @@ private:
   double m_d1; ///< distance between UE and ENB
   double m_d2; ///< distance between UE and other ENB
   double m_expectedDlSinrDb; ///< expected DL SINR in dB
+  double m_expectedUlSinrDb;
 };
 
 /**
@@ -106,7 +106,9 @@ private:
   double m_d1; ///< distance between UE and ENB
   double m_d2; ///< distance between UE and other ENB
   double m_commonDlSinrDb; ///< expected common DL SINR in dB
+  double m_commonUlSinrDb;
   double m_edgeDlSinrDb; ///< expected edge DL SINR in dB
+  double m_edgeUlSinrDb;
 
   uint32_t m_rspqThreshold; ///< RSPQ threshold
 };

@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2018, University of Padova, Dep. of Information Engineering, SIGNET lab.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Tommaso Zugno <tommasozugno@gmail.com>
+ *							Integration of Carrier Aggregation for the mmWave module
  */
 
 
@@ -28,9 +32,13 @@
 #include <ns3/config.h>
 #include <ns3/simple-ref-count.h>
 #include <ns3/ptr.h>
-
+#include <ns3/object.h>
+#include <fstream>
 #include <set>
 #include <map>
+#include "retx-stats-calculator.h"
+#include "mac-tx-stats-calculator.h"
+
 
 namespace ns3 {
 
@@ -193,15 +201,6 @@ private:
   void ConnectSrb0Traces (std::string ueRrcPath, uint64_t imsi, uint16_t cellId, uint16_t rnti);
 
   /**
-   * Connects Srb1 trace sources at UE to RLC and PDCP calculators
-   * \param ueRrcPath
-   * \param imsi
-   * \param cellId
-   * \param rnti
-   */
-  void ConnectSrb1TracesUe (std::string ueRrcPath, uint64_t imsi, uint16_t cellId, uint16_t rnti);
-
-  /**
    * Connects all trace sources at UE to RLC and PDCP calculators.
    * This function can connect traces only once for UE.
    * \param context
@@ -222,13 +221,23 @@ private:
   void ConnectTracesEnbIfFirstTime (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
 
   /**
-   * Connects all trace sources at UE to RLC and PDCP calculators.
+   * Connects SRB1 trace sources at UE to RLC and PDCP calculators
+   * \param ueRrcPath
+   * \param imsi
+   * \param cellId
+   * \param rnti
+   */
+  void ConnectSrb1TracesUe (std::string ueRrcPath, uint64_t imsi, uint16_t cellId, uint16_t rnti);
+
+  /**
+   * Connects DRBs trace sources at UE to RLC and PDCP calculators.
    * \param context
    * \param imsi
    * \param cellid
    * \param rnti
    */
-  void ConnectTracesUe (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
+  void ConnectDrbTracesUe (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
+
 
   /**
    * Disconnects all trace sources at UE to RLC and PDCP calculators.
@@ -241,13 +250,23 @@ private:
   void DisconnectTracesUe (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
 
   /**
-   * Connects all trace sources at eNB to RLC and PDCP calculators
+   * Connects SRB1 trace sources at eNB to RLC and PDCP calculators
    * \param context
    * \param imsi
    * \param cellid
    * \param rnti
    */
-  void ConnectTracesEnb (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
+  void ConnectSrb1TracesEnb (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
+
+  /**
+   * Connects DRBs trace sources at eNB to RLC and PDCP calculators
+   * \param context
+   * \param imsi
+   * \param cellid
+   * \param rnti
+   */
+  void ConnectDrbTracesEnb (std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti);
+
 
   /**
    * Disconnects all trace sources at eNB to RLC and PDCP calculators.
@@ -262,11 +281,16 @@ private:
 
   Ptr<RadioBearerStatsCalculator> m_rlcStats; //!< Calculator for RLC Statistics
   Ptr<RadioBearerStatsCalculator> m_pdcpStats; //!< Calculator for PDCP Statistics
+  Ptr<RetxStatsCalculator> m_retxStats;
+  Ptr<MacTxStatsCalculator> m_macTxStats;
+
 
   bool m_connected; //!< true if traces are connected to sinks, initially set to false
-  std::set<uint64_t> m_imsiSeenUe; //!< stores all UEs for which RLC and PDCP traces were connected
-  std::set<uint64_t> m_imsiSeenEnb; //!< stores all eNBs for which RLC and PDCP traces were connected
-  
+  std::set<uint64_t> m_imsiSeenUeSrb; //!< stores all UEs for which RLC and PDCP for SRB1 traces were connected
+  std::set<uint64_t> m_imsiSeenEnbSrb; //!< stores all eNBs for which RLC and PDCP traces and SRB1 were connected
+  std::map<uint64_t,uint16_t> m_imsiSeenUeDrb; //!< stores all UEs for which RLC and PDCP traces for DRBs were connected
+  std::set<uint64_t> m_imsiSeenEnbDrb; //!< stores all eNBs for which RLC and PDCP traces for drbs were connected
+
   /**
    * Struct used as key in m_ueManagerPathByCellIdRnti map
    */
@@ -278,10 +302,6 @@ private:
 
   /**
    * Less than operator for CellIdRnti, because it is used as key in map
-   *
-   * \param a the lhs operand
-   * \param b the rhs operand
-   * \returns true if less than
    */
   friend bool operator < (const CellIdRnti &a, const CellIdRnti &b);
 

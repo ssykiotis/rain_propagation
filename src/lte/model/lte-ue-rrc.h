@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, 2018, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,6 +21,10 @@
  * Modified by:
  *          Danilo Abrignani <danilo.abrignani@unibo.it> (Carrier Aggregation - GSoC 2015)
  *          Biljana Bojovic <biljana.bojovic@cttc.es> (Carrier Aggregation)
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
+ * Modified by: Tommaso Zugno <tommasozugno@gmail.com>
+ *							Integration of Carrier Aggregation for the mmWave module
  */
 
 #ifndef LTE_UE_RRC_H
@@ -33,15 +38,21 @@
 #include <ns3/lte-ue-cphy-sap.h>
 #include <ns3/lte-rrc-sap.h>
 #include <ns3/traced-callback.h>
+#include <ns3/lte-radio-bearer-info.h>
 #include "ns3/component-carrier-ue.h"
 #include <ns3/lte-ue-ccm-rrc-sap.h>
 #include <vector>
 
 #include <map>
 #include <set>
+#include <ns3/lte-rlc.h>
+#include <ns3/lte-pdcp.h>
+#include <ns3/lte-rlc-am.h>
 
 #define MIN_NO_CC 1
 #define MAX_NO_CC 5 // this is the maximum number of carrier components allowed by 3GPP up to R13
+#define MIN_NO_MMW_CC 1
+#define MAX_NO_MMW_CC 16 // from TR 38.802
 
 namespace ns3 {
 
@@ -98,7 +109,7 @@ public:
 
   /**
    * The states of the UE RRC entity
-   * 
+   *
    */
   enum State
   {
@@ -152,6 +163,7 @@ public:
    * \param s the CPHY SAP Provider
    */
   void SetLteUeCphySapProvider (LteUeCphySapProvider * s);
+  void SetMmWaveUeCphySapProvider (LteUeCphySapProvider * s);
   /**
    * set the CPHY SAP this RRC should use to interact with the PHY
    *
@@ -173,28 +185,34 @@ public:
    */
   LteUeCphySapUser* GetLteUeCphySapUser (uint8_t index);
 
+  void SetMmWaveUeCmacSapProvider (LteUeCmacSapProvider * s);
+
+  void SetMmWaveUeCmacSapProvider (LteUeCmacSapProvider * s, uint8_t index);
+
+
   /**
    * set the CMAC SAP this RRC should interact with
-   * \brief This function is overloaded to maintain backward compatibility 
+   * \brief This function is overloaded to maintain backward compatibility
    * \param s the CMAC SAP Provider to be used by this RRC
    */
   void SetLteUeCmacSapProvider (LteUeCmacSapProvider * s);
+
   /**
    * set the CMAC SAP this RRC should interact with
-   * \brief This function is overloaded to maintain backward compatibility 
+   * \brief This function is overloaded to maintain backward compatibility
    * \param s the CMAC SAP Provider to be used by this RRC
    * \param index the index
    */
   void SetLteUeCmacSapProvider (LteUeCmacSapProvider * s, uint8_t index);
 
   /**
-   * \brief This function is overloaded to maintain backward compatibility 
+   * \brief This function is overloaded to maintain backward compatibility
    * \return s the CMAC SAP User interface offered to the MAC by this RRC
    */
   LteUeCmacSapUser* GetLteUeCmacSapUser ();
   /**
    * \brief This function is overloaded to maintain backward compatibility
-   * \param index the index  
+   * \param index the index
    * \return s the CMAC SAP User interface offered to the MAC by this RRC
    */
   LteUeCmacSapUser* GetLteUeCmacSapUser (uint8_t index);
@@ -222,17 +240,18 @@ public:
    * newly created RLC instances
    */
   void SetLteMacSapProvider (LteMacSapProvider* s);
+  void SetMmWaveMacSapProvider (LteMacSapProvider* s);
 
-  /** 
+  /**
    * Set the AS SAP user to interact with the NAS entity
-   * 
+   *
    * \param s the AS SAP user
    */
   void SetAsSapUser (LteAsSapUser* s);
 
-  /** 
-   * 
-   * 
+  /**
+   *
+   *
    * \return the AS SAP provider exported by this RRC
    */
   LteAsSapProvider* GetAsSapProvider ();
@@ -251,8 +270,8 @@ public:
    */
   LteUeCcmRrcSapUser* GetLteCcmRrcSapUser ();
 
-  /** 
-   * 
+  /**
+   *
    * \param imsi the unique UE identifier
    */
   void SetImsi (uint64_t imsi);
@@ -269,18 +288,31 @@ public:
    */
   uint16_t GetRnti () const;
 
+
+  /**
+   * add an entry to the m_isMmWaveCellMap, respectively
+   * set to 1 or 0
+   */
+  void AddMmWaveCellId (uint16_t cellId);
+  void AddLteCellId (uint16_t cellId);
+
+  /**
+   * Switch lower layers' providers when connecting to a certain CellId
+   */
+  bool SwitchLowerLayerProviders (uint16_t cellId);
+
   /**
    *
    * \return the CellId of the attached Enb
    */
   uint16_t GetCellId () const;
 
-  /** 
+  /**
    * \return the uplink bandwidth in RBs
    */
   uint8_t GetUlBandwidth () const;
 
-  /** 
+  /**
    * \return the downlink bandwidth in RBs
    */
   uint8_t GetDlBandwidth () const;
@@ -290,7 +322,7 @@ public:
    */
   uint32_t GetDlEarfcn () const;
 
-  /** 
+  /**
    * \return the uplink carrier frequency (EARFCN)
    */
   uint32_t GetUlEarfcn () const;
@@ -301,12 +333,13 @@ public:
    */
   State GetState () const;
 
-  /** 
-   * 
-   * 
+  /**
+   *
+   *
    * \param val true if RLC SM is to be used, false if RLC UM/AM are to be used
    */
   void SetUseRlcSm (bool val);
+
 
   /**
    * TracedCallback signature for imsi, cellId and rnti events.
@@ -352,14 +385,14 @@ public:
     (uint64_t imsi, uint16_t cellId, uint16_t rnti,
      State oldState, State newState);
 
-  /**
-    * TracedCallback signature for secondary carrier configuration events.
-    *
-    * \param [in] Pointer to UE RRC
-    * \param [in] List of LteRrcSap::SCellToAddMod
-    */
-  typedef void (* SCarrierConfiguredTracedCallback)
-    (Ptr<LteUeRrc>, std::list<LteRrcSap::SCellToAddMod>);
+   /**
+     * TracedCallback signature for secondary carrier configuration events.
+     *
+     * \param [in] Pointer to UE RRC
+     * \param [in] List of LteRrcSap::SCellToAddMod
+     */
+   typedef void (* SCarrierConfiguredTracedCallback)
+     (Ptr<LteUeRrc>, std::list<LteRrcSap::SCellToAddMod>);
 
 
 private:
@@ -384,7 +417,7 @@ private:
   void DoNotifyRandomAccessSuccessful ();
   /// Notify random access failed function
   void DoNotifyRandomAccessFailed ();
- 
+
   // LTE AS SAP methods
   /**
    * Set CSG white list function
@@ -416,6 +449,9 @@ private:
   void DoSendData (Ptr<Packet> packet, uint8_t bid);
   /// Disconnect function
   void DoDisconnect ();
+  void DoNotifySecondaryCellConnected (uint16_t mmWaveRnti, uint16_t mmWaveCellId);
+  void DoNotifySecondaryCellHandover (uint16_t oldRnti, uint16_t newRnti, uint16_t mmWaveCellId, LteRrcSap::RadioResourceConfigDedicated rrcd);
+
 
   // CPHY SAP methods
   /**
@@ -440,6 +476,7 @@ private:
    * \param params LteUeCphySapUser::UeMeasurementsParameters
    */
   void DoReportUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params);
+  void DoNotifyRadioLinkFailure (double lastSinrValue);
 
   // RRC SAP methods
 
@@ -483,6 +520,11 @@ private:
    * \param msg the LteRrcSap::RrcConnectionReject
    */
   void DoRecvRrcConnectionReject (LteRrcSap::RrcConnectionReject msg);
+  /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectToMmWave interface.
+  void DoRecvRrcConnectToMmWave (uint16_t mmWaveCellId);
+  /// Part of the RRC protocol. Implement the LteUeRrcSapProvider:;RecvRrcConnectionSwitch interface.
+  void DoRecvRrcConnectionSwitch (LteRrcSap::RrcConnectionSwitch msg);
+
 
   /**
    * RRC CCM SAP USER Method
@@ -490,7 +532,7 @@ private:
    */
   void DoComponentCarrierEnabling (std::vector<uint8_t> res);
 
- 
+
   // INTERNAL METHODS
 
   /**
@@ -613,7 +655,7 @@ private:
    *
    * As for SaveUeMeasurements, this function aims to store the latest measurements
    * related to the secondary component carriers.
-   * in the current implementation it saves only measurements related on the serving 
+   * in the current implementation it saves only measurements related on the serving
    * secondary carriers while, measurements related to the Neighbor Cell are filtered
    */
 
@@ -706,19 +748,41 @@ private:
    */
   void SwitchToState (State s);
 
+  /**
+   * Transfer the content of the buffers of RLC back into the PDCP, so
+   * that if a new RLC is available then the buffer content is not lost
+   * @params rlc the old RLC layer instance
+   * @params pdcp the PDCP instance connected to the new RLC instance
+   * @params lcid
+   */
+  void CopyRlcBuffers(Ptr<LteRlc> rlc, Ptr<LtePdcp> pdcp, uint16_t lcid);
+  //Lossless HO: merge 2 buffers into 1 with increment order.
+  std::vector < LteRlcAm::RetxPdu > MergeBuffers(std::vector < LteRlcAm::RetxPdu > first, std::vector < LteRlcAm::RetxPdu > second);
+
+
   std::map<uint8_t, uint8_t> m_bid2DrbidMap; ///< bid to DR bid map
 
   std::vector<LteUeCphySapUser*> m_cphySapUser; ///< UE CPhy SAP user
   std::vector<LteUeCphySapProvider*> m_cphySapProvider; ///< UE CPhy SAP provider
+  // CphyProviders for InterRat handover between MmWave and LTE
+  std::vector<LteUeCphySapProvider*> m_lteCphySapProvider;
+  std::vector<LteUeCphySapProvider*> m_mmWaveCphySapProvider;
 
   std::vector<LteUeCmacSapUser*> m_cmacSapUser; ///< UE CMac SAP user
   std::vector<LteUeCmacSapProvider*> m_cmacSapProvider; ///< UE CMac SAP provider
+  // CmacProviders for InterRat handover between MmWave and LTE
+  std::vector<LteUeCmacSapProvider*> m_lteCmacSapProvider;
+  std::vector<LteUeCmacSapProvider*> m_mmWaveCmacSapProvider;
 
+  //interfaces for RRC protocol
   LteUeRrcSapUser* m_rrcSapUser; ///< RRC SAP user
   LteUeRrcSapProvider* m_rrcSapProvider; ///< RRC SAP provider
 
   LteMacSapProvider* m_macSapProvider; ///< MAC SAP provider
   LtePdcpSapUser* m_drbPdcpSapUser; ///< DRB PDCP SAP user
+  // MacProviders for InterRat handover between MmWave and LTE
+  LteMacSapProvider* m_lteMacSapProvider;
+  LteMacSapProvider* m_mmWaveMacSapProvider;
 
   LteAsSapProvider* m_asSapProvider; ///< AS SAP provider
   LteAsSapUser* m_asSapUser; ///< AS SAP user
@@ -738,6 +802,7 @@ private:
    * The `C-RNTI` attribute. Cell Radio Network Temporary Identifier.
    */
   uint16_t m_rnti;
+  uint16_t m_mmWaveRnti;
   /**
    * The `CellId` attribute. Serving cell identifier.
    */
@@ -761,6 +826,7 @@ private:
    * Radio Bearers by LCID.
    */
   std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > m_drbMap;
+  std::map <uint8_t, Ptr<RlcBearerInfo> > m_rlcMap;
 
   /**
    * True if RLC SM is to be used, false if RLC UM/AM are to be used.
@@ -858,6 +924,19 @@ private:
    * message.
    */
   TracedCallback<Ptr<LteUeRrc>, std::list<LteRrcSap::SCellToAddMod> > m_sCarrierConfiguredTrace;
+
+  /**
+   * The `SwitchToLte` trace source. Fired upon receiving a command to
+   * switch to LTE RAT. Exporting IMSI, cellId, RNTI.
+   */
+  TracedCallback<uint64_t, uint16_t, uint16_t> m_switchToLteTrace;
+
+  /**
+   * The `SwitchToMmWave` trace source. Fired upon receiving a command to
+   * switch to MmWave RAT. Exporting IMSI, cellId, RNTI.
+   */
+  TracedCallback<uint64_t, uint16_t, uint16_t> m_switchToMmWaveTrace;
+
 
   /// True if a connection request by upper layers is pending.
   bool m_connectionPending;
@@ -1017,7 +1096,7 @@ private:
 
   /**
    * \brief Internal storage of the latest measurement results from all detected
-   *        detected Secondary carrier component, indexed by the carrier component ID 
+   *        detected Secondary carrier component, indexed by the carrier component ID
    *        where the measurement was taken from.
    *
    * Each *measurement result* comprises of RSRP (in dBm) and RSRQ (in dB).
@@ -1027,7 +1106,7 @@ private:
    * applied to the measurement results and they are used by *UE measurements*
    * function:
    * - LteUeRrc::MeasurementReportTriggering: in this case it is not set any
-   *   measurement related to seconday carrier components since the 
+   *   measurement related to seconday carrier components since the
    *   A6 event is not implemented
    * - LteUeRrc::SendMeasurementReport: in this case the report are sent.
    */
@@ -1166,12 +1245,28 @@ private:
    *        connection establishment procedure has failed.
    */
   void ConnectionTimeout ();
+  bool m_isSecondaryRRC;
+  uint16_t m_mmWaveCellId;
+
+  std::map<uint16_t, bool> m_isMmWaveCellMap;
+  bool m_interRatHoCapable;
+  LteRrcSap::RachConfigDedicated m_rachConfigDedicated;
+  bool m_ncRaStarted;
+
+  // lossless HO
+  std::vector < Ptr<Packet> > m_rlcBufferToBeForwarded;
+  uint32_t m_rlcBufferToBeForwardedSize;
 
 public:
-  /** 
+  /**
    * The number of component carriers.
    */
   uint16_t m_numberOfComponentCarriers;
+
+  /**
+   * The number of mmWave component carriers. This is used in McUeDevs.
+   */
+  uint16_t m_numberOfMmWaveComponentCarriers;
 
 }; // end of class LteUeRrc
 

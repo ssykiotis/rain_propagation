@@ -53,9 +53,9 @@ public:
   */
   virtual void SendLteControlMessage (Ptr<LteControlMessage> msg) = 0;
 
-  /** 
+  /**
    * send a preamble on the PRACH
-   * 
+   *
    * \param prachId the ID of the preamble
    * \param raRnti the RA rnti
    */

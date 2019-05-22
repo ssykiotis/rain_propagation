@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 
@@ -24,7 +28,7 @@
 
 #include "ns3/lte-rlc.h"
 #include "ns3/lte-rlc-tag.h"
-// #include "lte-mac-sap.h"
+//#include "lte-mac-sap.h"
 #include "ns3/lte-rlc-sap.h"
 // #include "ff-mac-sched-sap.h"
 
@@ -32,16 +36,19 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteRlc");
 
-
+///////////////////////////////////////
 /// LteRlcSpecificLteMacSapUser class
+/*
 class LteRlcSpecificLteMacSapUser : public LteMacSapUser
 {
 public:
+*/
   /**
    * Constructor
    *
    * \param rlc the RLC
    */
+   /*
   LteRlcSpecificLteMacSapUser (LteRlc* rlc);
 
   // Interface implemented from LteMacSapUser
@@ -53,6 +60,7 @@ private:
   LteRlcSpecificLteMacSapUser ();
   LteRlc* m_rlc; ///< the RLC
 };
+*/
 
 LteRlcSpecificLteMacSapUser::LteRlcSpecificLteMacSapUser (LteRlc* rlc)
   : m_rlc (rlc)
@@ -76,11 +84,16 @@ LteRlcSpecificLteMacSapUser::NotifyHarqDeliveryFailure ()
 }
 
 void
+LteRlcSpecificLteMacSapUser::NotifyHarqDeliveryFailure (uint8_t harqId)
+{
+  m_rlc->DoNotifyHarqDeliveryFailure (harqId);
+}
+
+void
 LteRlcSpecificLteMacSapUser::ReceivePdu (Ptr<Packet> p, uint16_t rnti, uint8_t lcid)
 {
   m_rlc->DoReceivePdu (p, rnti, lcid);
 }
-
 
 ///////////////////////////////////////
 
@@ -90,10 +103,12 @@ LteRlc::LteRlc ()
   : m_rlcSapUser (0),
     m_macSapProvider (0),
     m_rnti (0),
-    m_lcid (0)
+    m_lcid (0),
+    isMc(false) // TODO refactor this!!
 {
   NS_LOG_FUNCTION (this);
   m_rlcSapProvider = new LteRlcSpecificLteRlcSapProvider<LteRlc> (this);
+  m_epcX2RlcUser = new EpcX2RlcSpecificUser<LteRlc> (this);
   m_macSapUser = new LteRlcSpecificLteMacSapUser (this);
 }
 
@@ -115,6 +130,10 @@ TypeId LteRlc::GetTypeId (void)
                      "PDU received.",
                      MakeTraceSourceAccessor (&LteRlc::m_rxPdu),
                      "ns3::LteRlc::ReceiveTracedCallback")
+   .AddTraceSource ("TxCompletedCallback",
+                     "PDU acked.",
+                     MakeTraceSourceAccessor (&LteRlc::m_txCompletedCallback),
+                     "ns3::LteRlc::RetransmissionCountCallback")
     ;
   return tid;
 }
@@ -169,7 +188,30 @@ LteRlc::GetLteMacSapUser ()
   return m_macSapUser;
 }
 
+void
+LteRlc::DoNotifyHarqDeliveryFailure (uint8_t harqId)
+{
+	NS_LOG_FUNCTION (this);
+}
 
+void
+LteRlc::SetUeDataParams(EpcX2Sap::UeDataParams params)
+{
+  isMc = true;
+  m_ueDataParams = params;
+}
+
+void
+LteRlc::SetEpcX2RlcProvider (EpcX2RlcProvider * s)
+{
+  m_epcX2RlcProvider = s;
+}
+
+EpcX2RlcUser*
+LteRlc::GetEpcX2RlcUser ()
+{
+  return m_epcX2RlcUser;
+}
 
 ////////////////////////////////////////
 
@@ -223,12 +265,13 @@ LteRlcSm::DoReceivePdu (Ptr<Packet> p, uint16_t rnti, uint8_t lcid)
   // RLC Performance evaluation
   RlcTag rlcTag;
   Time delay;
-  NS_ASSERT_MSG (p->PeekPacketTag (rlcTag), "RlcTag is missing");
-  p->RemovePacketTag (rlcTag);
-  delay = Simulator::Now() - rlcTag.GetSenderTimestamp ();
-  NS_LOG_LOGIC (" RNTI=" << m_rnti 
-                << " LCID=" << (uint32_t) m_lcid 
-                << " size=" << p->GetSize () 
+  if (p->FindFirstMatchingByteTag(rlcTag))
+    {
+      delay = Simulator::Now() - rlcTag.GetSenderTimestamp ();
+    }
+  NS_LOG_LOGIC (" RNTI=" << m_rnti
+                << " LCID=" << (uint32_t) m_lcid
+                << " size=" << p->GetSize ()
                 << " delay=" << delay.GetNanoSeconds ());
   m_rxPdu(m_rnti, m_lcid, p->GetSize (), delay.GetNanoSeconds () );
 }
@@ -247,9 +290,9 @@ LteRlcSm::DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId, 
 
   // RLC Performance evaluation
   RlcTag tag (Simulator::Now());
-  params.pdu->AddPacketTag (tag);
-  NS_LOG_LOGIC (" RNTI=" << m_rnti 
-                << " LCID=" << (uint32_t) m_lcid 
+  params.pdu->AddByteTag (tag);
+  NS_LOG_LOGIC (" RNTI=" << m_rnti
+                << " LCID=" << (uint32_t) m_lcid
                 << " size=" << bytes);
   m_txPdu(m_rnti, m_lcid, bytes);
 
@@ -270,12 +313,19 @@ LteRlcSm::ReportBufferStatus ()
   LteMacSapProvider::ReportBufferStatusParameters p;
   p.rnti = m_rnti;
   p.lcid = m_lcid;
-  p.txQueueSize = 80000;
+  p.txQueueSize = 1000000;  // mmWave module: Arbitrarily changed full-buffer BSR to report 1MB available each subframe
   p.txQueueHolDelay = 10;
   p.retxQueueSize = 0;
   p.retxQueueHolDelay = 0;
   p.statusPduSize = 0;
   m_macSapProvider->ReportBufferStatus (p);
+}
+
+void
+LteRlcSm::DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params)
+{
+  NS_LOG_FUNCTION(this);
+  NS_FATAL_ERROR("Not supported");
 }
 
 

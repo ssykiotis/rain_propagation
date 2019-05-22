@@ -1,6 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2010 TELEMATICS LAB, DEE - Politecnico di Bari
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,6 +19,9 @@
  * Author: Giuseppe Piro  <g.piro@poliba.it>
  *         Marco Miozzo <mmiozzo@cttc.es>
  *         Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #ifndef LTE_PHY_H
@@ -53,13 +57,13 @@ class LtePhy : public Object
 {
 
 public:
-  /** 
+  /**
    * @warning the default constructor should not be used
    */
   LtePhy ();
 
-  /** 
-   * 
+  /**
+   *
    * \param dlPhy the downlink LteSpectrumPhy instance
    * \param ulPhy the uplink LteSpectrumPhy instance
    */
@@ -77,22 +81,22 @@ public:
    * \brief Set the device where the phy layer is attached
    * \param d the device
    */
-  void SetDevice (Ptr<LteNetDevice> d);
+  void SetDevice (Ptr<NetDevice> d);
   /**
    * \brief Get the device where the phy layer is attached
    * \return the pointer to the device
    */
-  Ptr<LteNetDevice> GetDevice () const;
+  Ptr<NetDevice> GetDevice () const;
 
-  /** 
-   * 
+  /**
+   *
    * \return a pointer to the LteSpectrumPhy instance that manages the downlink
    */
   Ptr<LteSpectrumPhy> GetDownlinkSpectrumPhy ();
 
 
-  /** 
-   * 
+  /**
+   *
    * \return a pointer to the LteSpectrumPhy instance that manages the uplink
    */
   Ptr<LteSpectrumPhy> GetUplinkSpectrumPhy ();
@@ -133,8 +137,8 @@ public:
    */
   double GetTti (void) const;
 
-  /** 
-   * 
+  /**
+   *
    * \param cellId the Cell Identifier
    */
   void DoSetCellId (uint16_t cellId);
@@ -144,14 +148,14 @@ public:
   * \returns the RB group size according to the bandwidth
   */
   uint8_t GetRbgSize (void) const;
-  
-  
+
+
   /**
   * \returns the SRS periodicity (see Table 8.2-1 of 36.213)
   * \param srcCi the SRS Configuration Index
   */
   uint16_t GetSrsPeriodicity (uint16_t srcCi) const;
-  
+
   /**
   * \returns the SRS Subframe offset (see Table 8.2-1 of 36.213)
   * \param srcCi the SRS Configuration Index
@@ -180,17 +184,17 @@ public:
   std::list<Ptr<LteControlMessage> > GetControlMessages (void);
 
 
-  /** 
+  /**
    * generate a CQI report based on the given SINR of Ctrl frame
-   * 
+   *
    * \param sinr the SINR vs frequency measured by the device
    */
   virtual void GenerateCtrlCqiReport (const SpectrumValue& sinr) = 0;
-  
-  /** 
+
+  /**
   * generate a CQI report based on the given SINR of Data frame
   * (used for PUSCH CQIs)
-  * 
+  *
   * \param sinr the SINR vs frequency measured by the device
   */
   virtual void GenerateDataCqiReport (const SpectrumValue& sinr) = 0;
@@ -198,14 +202,14 @@ public:
   /**
   * generate a report based on the linear interference and noise power
   * perceived during DATA frame
-  * NOTE: used only by eNB 
+  * NOTE: used only by eNB
   *
   * \param interf the interference + noise power measured by the device
   */
   virtual void ReportInterference (const SpectrumValue& interf) = 0;
 
   /**
-  * generate a report based on the linear RS power perceived during CTRL 
+  * generate a report based on the linear RS power perceived during CTRL
   * frame
   * NOTE: used only by UE for evaluating RSRP
   *
@@ -214,14 +218,14 @@ public:
   virtual void ReportRsReceivedPower (const SpectrumValue& power) = 0;
 
   /**
-  * Set the component carrier ID 
+  * Set the component carrier ID
   *
   * \param index the component carrier ID index
   */
   void SetComponentCarrierId (uint8_t index);
 
   /**
-  * Get the component carrier ID 
+  * Get the component carrier ID
   *
   * \returns the component carrier ID index
   */
@@ -229,7 +233,7 @@ public:
 
 protected:
   /// Pointer to the NetDevice where this PHY layer is attached.
-  Ptr<LteNetDevice> m_netDevice;
+  Ptr<NetDevice> m_netDevice;
 
   /**
    * The downlink LteSpectrumPhy associated to this LtePhy. Also available as

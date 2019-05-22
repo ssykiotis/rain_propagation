@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #include <ns3/fatal-error.h>
@@ -35,13 +39,7 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteRrcProtocolIdeal");
 
-/**
- * \ingroup lte
- *
- */
-
-/// RRC ideal message delay
-static const Time RRC_IDEAL_MSG_DELAY = MilliSeconds (0);
+static const Time RRC_IDEAL_MSG_DELAY = MicroSeconds (500);
 
 NS_OBJECT_ENSURE_REGISTERED (LteUeRrcProtocolIdeal);
 
@@ -75,117 +73,128 @@ LteUeRrcProtocolIdeal::GetTypeId (void)
   return tid;
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::SetLteUeRrcSapProvider (LteUeRrcSapProvider* p)
 {
   m_ueRrcSapProvider = p;
 }
 
-LteUeRrcSapUser* 
+LteUeRrcSapUser*
 LteUeRrcProtocolIdeal::GetLteUeRrcSapUser ()
 {
   return m_ueRrcSapUser;
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::SetUeRrc (Ptr<LteUeRrc> rrc)
 {
   m_rrc = rrc;
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSetup (LteUeRrcSapUser::SetupParameters params)
 {
   NS_LOG_FUNCTION (this);
   // We don't care about SRB0/SRB1 since we use ideal RRC messages.
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
 {
   // initialize the RNTI and get the EnbLteRrcSapProvider for the
   // eNB we are currently attached to
   m_rnti = m_rrc->GetRnti ();
   SetEnbRrcSapProvider ();
-    
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
                        &LteEnbRrcSapProvider::RecvRrcConnectionRequest,
                        m_enbRrcSapProvider,
-                       m_rnti, 
+                       m_rnti,
                        msg);
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSendRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted,
                        m_enbRrcSapProvider,
-		       m_rnti, 
+		       m_rnti,
 		       msg);
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSendRrcConnectionReconfigurationCompleted (LteRrcSap::RrcConnectionReconfigurationCompleted msg)
 {
   // re-initialize the RNTI and get the EnbLteRrcSapProvider for the
   // eNB we are currently attached to
   m_rnti = m_rrc->GetRnti ();
   SetEnbRrcSapProvider ();
-    
-   Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+
+   Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
                         &LteEnbRrcSapProvider::RecvRrcConnectionReconfigurationCompleted,
                         m_enbRrcSapProvider,
-                        m_rnti, 
+                        m_rnti,
                         msg);
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSendRrcConnectionReestablishmentRequest (LteRrcSap::RrcConnectionReestablishmentRequest msg)
 {
-   Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+   Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteEnbRrcSapProvider::RecvRrcConnectionReestablishmentRequest,
                        m_enbRrcSapProvider,
-		       m_rnti, 
+		       m_rnti,
                         msg);
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSendRrcConnectionReestablishmentComplete (LteRrcSap::RrcConnectionReestablishmentComplete msg)
 {
-   Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+   Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteEnbRrcSapProvider::RecvRrcConnectionReestablishmentComplete,
                        m_enbRrcSapProvider,
-		       m_rnti, 
+		       m_rnti,
 msg);
 }
 
-void 
+void
 LteUeRrcProtocolIdeal::DoSendMeasurementReport (LteRrcSap::MeasurementReport msg)
 {
-   Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+   Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
                         &LteEnbRrcSapProvider::RecvMeasurementReport,
                         m_enbRrcSapProvider,
-                        m_rnti, 
+                        m_rnti,
                         msg);
 }
 
-void 
+void
+LteUeRrcProtocolIdeal::DoSendNotifySecondaryCellConnected (uint16_t mmWaveRnti, uint16_t mmWaveCellId)
+{
+   Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
+                        &LteEnbRrcSapProvider::RecvRrcSecondaryCellInitialAccessSuccessful,
+                        m_enbRrcSapProvider,
+                        m_rnti,
+                        mmWaveRnti,
+                        mmWaveCellId);
+}
+
+void
 LteUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
 {
-  uint16_t cellId = m_rrc->GetCellId ();  
+uint16_t cellId = m_rrc->GetCellId ();
 
   // walk list of all nodes to get the peer eNB
   Ptr<LteEnbNetDevice> enbDev;
   NodeList::Iterator listEnd = NodeList::End ();
   bool found = false;
-  for (NodeList::Iterator i = NodeList::Begin (); 
-       (i != listEnd) && (!found); 
+  for (NodeList::Iterator i = NodeList::Begin ();
+       (i != listEnd) && (!found);
        ++i)
     {
       Ptr<Node> node = *i;
       int nDevs = node->GetNDevices ();
-      for (int j = 0; 
+      for (int j = 0;
            (j < nDevs) && (!found);
            j++)
         {
@@ -198,16 +207,17 @@ LteUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
             {
               if (enbDev->HasCellId (cellId))
                 {
-                  found = true;          
+                  found = true;
                   break;
                 }
             }
         }
     }
   NS_ASSERT_MSG (found, " Unable to find eNB with CellId =" << cellId);
-  m_enbRrcSapProvider = enbDev->GetRrc ()->GetLteEnbRrcSapProvider ();  
+  m_enbRrcSapProvider = enbDev->GetRrc ()->GetLteEnbRrcSapProvider ();
   Ptr<LteEnbRrcProtocolIdeal> enbRrcProtocolIdeal = enbDev->GetRrc ()->GetObject<LteEnbRrcProtocolIdeal> ();
   enbRrcProtocolIdeal->SetUeRrcSapProvider (m_rnti, m_ueRrcSapProvider);
+
 }
 
 
@@ -229,7 +239,7 @@ void
 LteEnbRrcProtocolIdeal::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
-  delete m_enbRrcSapUser;  
+  delete m_enbRrcSapUser;
 }
 
 TypeId
@@ -243,25 +253,25 @@ LteEnbRrcProtocolIdeal::GetTypeId (void)
   return tid;
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::SetLteEnbRrcSapProvider (LteEnbRrcSapProvider* p)
 {
   m_enbRrcSapProvider = p;
 }
 
-LteEnbRrcSapUser* 
+LteEnbRrcSapUser*
 LteEnbRrcProtocolIdeal::GetLteEnbRrcSapUser ()
 {
   return m_enbRrcSapUser;
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::SetCellId (uint16_t cellId)
 {
   m_cellId = cellId;
 }
 
-LteUeRrcSapProvider* 
+LteUeRrcSapProvider*
 LteEnbRrcProtocolIdeal::GetUeRrcSapProvider (uint16_t rnti)
 {
   std::map<uint16_t, LteUeRrcSapProvider*>::const_iterator it;
@@ -270,7 +280,7 @@ LteEnbRrcProtocolIdeal::GetUeRrcSapProvider (uint16_t rnti)
   return it->second;
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::SetUeRrcSapProvider (uint16_t rnti, LteUeRrcSapProvider* p)
 {
   std::map<uint16_t, LteUeRrcSapProvider*>::iterator it;
@@ -279,7 +289,7 @@ LteEnbRrcProtocolIdeal::SetUeRrcSapProvider (uint16_t rnti, LteUeRrcSapProvider*
   it->second = p;
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSetupUe (uint16_t rnti, LteEnbRrcSapUser::SetupUeParameters params)
 {
   NS_LOG_FUNCTION (this << rnti);
@@ -303,7 +313,7 @@ LteEnbRrcProtocolIdeal::DoSetupUe (uint16_t rnti, LteEnbRrcSapUser::SetupUeParam
   //           {
   //             ueRrc = ueDev->GetRrc ();
   //             if ((ueRrc->GetRnti () == rnti) && (ueRrc->GetCellId () == m_cellId))
-  //               {                 
+  //               {
   //       	  found = true;
   //       	  break;
   //               }
@@ -316,19 +326,19 @@ LteEnbRrcProtocolIdeal::DoSetupUe (uint16_t rnti, LteEnbRrcSapUser::SetupUeParam
 
   // just create empty entry, the UeRrcSapProvider will be set by the
   // ue upon connection request or connection reconfiguration
-  // completed 
+  // completed
   m_enbRrcSapProviderMap[rnti] = 0;
 
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoRemoveUe (uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << rnti);
   m_enbRrcSapProviderMap.erase (rnti);
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendSystemInformation (uint16_t cellId, LteRrcSap::SystemInformation msg)
 {
   NS_LOG_FUNCTION (this << cellId);
@@ -343,74 +353,92 @@ LteEnbRrcProtocolIdeal::DoSendSystemInformation (uint16_t cellId, LteRrcSap::Sys
           Ptr<LteUeNetDevice> ueDev = node->GetDevice (j)->GetObject <LteUeNetDevice> ();
           if (ueDev != 0)
             {
-              Ptr<LteUeRrc> ueRrc = ueDev->GetRrc ();              
+              Ptr<LteUeRrc> ueRrc = ueDev->GetRrc ();
               NS_LOG_LOGIC ("considering UE IMSI " << ueDev->GetImsi () << " that has cellId " << ueRrc->GetCellId ());
               if (ueRrc->GetCellId () == cellId)
-                {       
+                {
                   NS_LOG_LOGIC ("sending SI to IMSI " << ueDev->GetImsi ());
                   ueRrc->GetLteUeRrcSapProvider ()->RecvSystemInformation (msg);
-                  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+                  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
                                        &LteUeRrcSapProvider::RecvSystemInformation,
-                                       ueRrc->GetLteUeRrcSapProvider (), 
-                                       msg);          
-                }             
+                                       ueRrc->GetLteUeRrcSapProvider (),
+                                       msg);
+                }
             }
         }
-    } 
+    }
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteUeRrcSapProvider::RecvRrcConnectionSetup,
-		       GetUeRrcSapProvider (rnti), 
+		       GetUeRrcSapProvider (rnti),
 		       msg);
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendRrcConnectionReconfiguration (uint16_t rnti, LteRrcSap::RrcConnectionReconfiguration msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteUeRrcSapProvider::RecvRrcConnectionReconfiguration,
-		       GetUeRrcSapProvider (rnti), 
+		       GetUeRrcSapProvider (rnti),
 		       msg);
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendRrcConnectionReestablishment (uint16_t rnti, LteRrcSap::RrcConnectionReestablishment msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteUeRrcSapProvider::RecvRrcConnectionReestablishment,
-		       GetUeRrcSapProvider (rnti), 
+		       GetUeRrcSapProvider (rnti),
 		       msg);
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendRrcConnectionReestablishmentReject (uint16_t rnti, LteRrcSap::RrcConnectionReestablishmentReject msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteUeRrcSapProvider::RecvRrcConnectionReestablishmentReject,
-		       GetUeRrcSapProvider (rnti), 
+		       GetUeRrcSapProvider (rnti),
 		       msg);
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendRrcConnectionRelease (uint16_t rnti, LteRrcSap::RrcConnectionRelease msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteUeRrcSapProvider::RecvRrcConnectionRelease,
-		       GetUeRrcSapProvider (rnti), 
+		       GetUeRrcSapProvider (rnti),
 		       msg);
 }
 
-void 
+void
 LteEnbRrcProtocolIdeal::DoSendRrcConnectionReject (uint16_t rnti, LteRrcSap::RrcConnectionReject msg)
 {
-  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
 		       &LteUeRrcSapProvider::RecvRrcConnectionReject,
-		       GetUeRrcSapProvider (rnti), 
+		       GetUeRrcSapProvider (rnti),
 		       msg);
+}
+
+void
+LteEnbRrcProtocolIdeal::DoSendRrcConnectionSwitch (uint16_t rnti, LteRrcSap::RrcConnectionSwitch msg)
+{
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
+           &LteUeRrcSapProvider::RecvRrcConnectionSwitch,
+           GetUeRrcSapProvider (rnti),
+           msg);
+}
+
+void
+LteEnbRrcProtocolIdeal::DoSendRrcConnectToMmWave (uint16_t rnti, uint16_t mmWaveCellId)
+{
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
+           &LteUeRrcSapProvider::RecvRrcConnectToMmWave,
+           GetUeRrcSapProvider (rnti),
+           mmWaveCellId);
 }
 
 /*
@@ -422,36 +450,22 @@ LteEnbRrcProtocolIdeal::DoSendRrcConnectionReject (uint16_t rnti, LteRrcSap::Rrc
  * purpose of LteEnbRrcProtocolIdeal. The workaround is to store the
  * actual message in a global map, so that then we can just encode the
  * key in a header and send that between eNBs over X2.
- * 
+ *
  */
 
-static std::map<uint32_t, LteRrcSap::HandoverPreparationInfo> g_handoverPreparationInfoMsgMap; ///< handover preparation info message map
-static uint32_t g_handoverPreparationInfoMsgIdCounter = 0; ///< handover preparation info message ID counter
+static std::map<uint32_t, LteRrcSap::HandoverPreparationInfo> g_handoverPreparationInfoMsgMap;
+static uint32_t g_handoverPreparationInfoMsgIdCounter = 0;
 
-/**
+/*
  * This header encodes the map key discussed above. We keep this
  * private since it should not be used outside this file.
- * 
+ *
  */
 class IdealHandoverPreparationInfoHeader : public Header
 {
 public:
-  /**
-   * Get the message ID function
-   *
-   * \returns the message ID
-   */
   uint32_t GetMsgId ();
-  /**
-   * Set the message ID function
-   *
-   * \param id the message ID 
-   */
   void SetMsgId (uint32_t id);
-  /**
-   * \brief Get the type ID.
-   * \return the object TypeId
-   */
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
   virtual void Print (std::ostream &os) const;
@@ -460,20 +474,20 @@ public:
   virtual uint32_t Deserialize (Buffer::Iterator start);
 
 private:
-  uint32_t m_msgId; ///< message ID
+  uint32_t m_msgId;
 };
 
-uint32_t 
+uint32_t
 IdealHandoverPreparationInfoHeader::GetMsgId ()
 {
   return m_msgId;
-}  
+}
 
-void 
+void
 IdealHandoverPreparationInfoHeader::SetMsgId (uint32_t id)
 {
   m_msgId = id;
-}  
+}
 
 
 TypeId
@@ -504,7 +518,7 @@ uint32_t IdealHandoverPreparationInfoHeader::GetSerializedSize (void) const
 }
 
 void IdealHandoverPreparationInfoHeader::Serialize (Buffer::Iterator start) const
-{  
+{
   start.WriteU32 (m_msgId);
 }
 
@@ -516,7 +530,7 @@ uint32_t IdealHandoverPreparationInfoHeader::Deserialize (Buffer::Iterator start
 
 
 
-Ptr<Packet> 
+Ptr<Packet>
 LteEnbRrcProtocolIdeal::DoEncodeHandoverPreparationInformation (LteRrcSap::HandoverPreparationInfo msg)
 {
   uint32_t msgId = ++g_handoverPreparationInfoMsgIdCounter;
@@ -530,7 +544,7 @@ LteEnbRrcProtocolIdeal::DoEncodeHandoverPreparationInformation (LteRrcSap::Hando
   return p;
 }
 
-LteRrcSap::HandoverPreparationInfo 
+LteRrcSap::HandoverPreparationInfo
 LteEnbRrcProtocolIdeal::DoDecodeHandoverPreparationInformation (Ptr<Packet> p)
 {
   IdealHandoverPreparationInfoHeader h;
@@ -546,33 +560,19 @@ LteEnbRrcProtocolIdeal::DoDecodeHandoverPreparationInformation (Ptr<Packet> p)
 
 
 
-static std::map<uint32_t, LteRrcSap::RrcConnectionReconfiguration> g_handoverCommandMsgMap; ///< handover command message map
-static uint32_t g_handoverCommandMsgIdCounter = 0; ///< handover command message ID counter
+static std::map<uint32_t, LteRrcSap::RrcConnectionReconfiguration> g_handoverCommandMsgMap;
+static uint32_t g_handoverCommandMsgIdCounter = 0;
 
-/**
+/*
  * This header encodes the map key discussed above. We keep this
  * private since it should not be used outside this file.
- * 
+ *
  */
 class IdealHandoverCommandHeader : public Header
 {
 public:
-  /**
-   * Get the message ID function
-   *
-   * \returns the message ID
-   */
   uint32_t GetMsgId ();
-  /**
-   * Set the message ID function
-   *
-   * \param id the message ID
-   */
   void SetMsgId (uint32_t id);
-  /**
-   * \brief Get the type ID.
-   * \return the object TypeId
-   */
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
   virtual void Print (std::ostream &os) const;
@@ -581,20 +581,20 @@ public:
   virtual uint32_t Deserialize (Buffer::Iterator start);
 
 private:
-  uint32_t m_msgId; ///< message ID
+  uint32_t m_msgId;
 };
 
-uint32_t 
+uint32_t
 IdealHandoverCommandHeader::GetMsgId ()
 {
   return m_msgId;
-}  
+}
 
-void 
+void
 IdealHandoverCommandHeader::SetMsgId (uint32_t id)
 {
   m_msgId = id;
-}  
+}
 
 
 TypeId
@@ -625,7 +625,7 @@ uint32_t IdealHandoverCommandHeader::GetSerializedSize (void) const
 }
 
 void IdealHandoverCommandHeader::Serialize (Buffer::Iterator start) const
-{  
+{
   start.WriteU32 (m_msgId);
 }
 
@@ -637,7 +637,7 @@ uint32_t IdealHandoverCommandHeader::Deserialize (Buffer::Iterator start)
 
 
 
-Ptr<Packet> 
+Ptr<Packet>
 LteEnbRrcProtocolIdeal::DoEncodeHandoverCommand (LteRrcSap::RrcConnectionReconfiguration msg)
 {
   uint32_t msgId = ++g_handoverCommandMsgIdCounter;

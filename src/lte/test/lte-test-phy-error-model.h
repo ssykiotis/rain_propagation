@@ -33,10 +33,10 @@ using namespace ns3;
  * \ingroup lte-test
  * \ingroup tests
  *
- * \brief This system test program creates different test cases with a single eNB and 
- * several UEs, all having the same Radio Bearer specification. In each test 
- * case, the UEs see the same SINR from the eNB; different test cases are 
- * implemented obtained by using different SINR values and different numbers of 
+ * \brief This system test program creates different test cases with a single eNB and
+ * several UEs, all having the same Radio Bearer specification. In each test
+ * case, the UEs see the same SINR from the eNB; different test cases are
+ * implemented obtained by using different SINR values and different numbers of
  * UEs. The test consists on ...
  */
 class LenaDataPhyErrorModelTestCase : public TestCase
@@ -68,7 +68,7 @@ private:
    */
   static std::string BuildNameString (uint16_t nUser, uint16_t dist, uint32_t rngRun);
   uint16_t m_nUser; ///< number of UE nodes
-  double m_dist; ///< the distance between nodes
+  uint16_t m_dist; ///< the distance between nodes
   double m_blerRef; ///< the expected BLER
   uint16_t m_toleranceRxPackets; ///< receive packet tolerance loss
   Time m_statsStartTime; ///< Extra time in the beginning of simulation to allow RRC connection establishment + SRS
@@ -113,7 +113,7 @@ private:
    */
   static std::string BuildNameString (uint16_t nUser, uint16_t dist, uint32_t rngRun);
   uint16_t m_nEnb; ///< the number of ENB nodes
-  double m_dist; ///< the distance between nodes
+  uint16_t m_dist; ///< the distance between nodes
   double m_blerRef; ///< the expected BLER
   uint16_t m_toleranceRxPackets; ///< receive packet tolerance loss
   Time m_statsStartTime; ///< Extra time in the beginning of simulation to allow RRC connection establishment + SRS

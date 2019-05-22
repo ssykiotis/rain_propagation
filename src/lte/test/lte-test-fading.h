@@ -39,7 +39,7 @@ using namespace ns3;
  * \ingroup tests
  *
  * \brief Test 1.1 fading model
- */
+*/
 
 class LteFadingTestSuite : public TestSuite
 {
@@ -52,8 +52,8 @@ class LteFadingTestSuite : public TestSuite
  * \ingroup lte-test
  * \ingroup tests
  *
- * \brief Fading test case is checking if the pathloss between macro and UE 
- * is equal to the theoretical value when using the Okumura Hata Model 
+ * \brief Fading test case is checking if the pathloss between macro and UE
+ * is equal to the theoretical value when using the Okumura Hata Model
  * (150 < freq < 1500 MHz).
  */
 class LteFadingTestCase : public TestCase
@@ -68,19 +68,19 @@ class LteFadingTestCase : public TestCase
      */
     LteFadingTestCase (Ptr<BuildingsMobilityModel> m1, Ptr<BuildingsMobilityModel> m2, double refValue, std::string name);
     virtual ~LteFadingTestCase ();
-    
+
   private:
     virtual void DoRun (void);
-    
+
     void GetFadingSample ();
-    
+
     Ptr<BuildingsMobilityModel> m_node1; ///< building mobility model #1
     Ptr<BuildingsMobilityModel> m_node2; ///< building mobility model #2
     Ptr<TraceFadingLossModel> m_fadingModule; ///< fading loss model
     double m_lossRef; ///< loss reference
     std::vector<SpectrumValue> m_fadingSamples; ///< fading samples
-     
-    
+
+
 };
 
 /**
@@ -102,16 +102,17 @@ class LteFadingSystemTestCase : public TestCase
     LteFadingSystemTestCase (std::string name, double snrDb, double dist, uint16_t mcsIndex);
     LteFadingSystemTestCase ();
     virtual ~LteFadingSystemTestCase ();
-    
+
     /**
      * DL scheduling function
      * \param dlInfo DL scheduling info
      */
-    void DlScheduling (DlSchedulingCallbackInfo dlInfo);
-                       
+    void DlScheduling (uint32_t frameNo, uint32_t subframeNo, uint16_t rnti,
+                       uint8_t mcsTb1, uint16_t sizeTb1, uint8_t mcsTb2, uint16_t sizeTb2);
+
   private:
     virtual void DoRun (void);
-    
+
     double m_snrDb; ///< SNR in DB
     double m_distance; ///< distance
     uint16_t m_mcsIndex; ///< MCS index

@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2018, University of Padova, Dep. of Information Engineering, SIGNET lab.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>
+ *
+ * Modified by: Tommaso Zugno <tommasozugno@gmail.com>
+ *							Integration of Carrier Aggregation for the mmWave module
  */
 
 
@@ -56,13 +60,27 @@ public:
   uint16_t cellId; //!< cellId
 };
 
+struct BoundCallbackArgumentRetx : public SimpleRefCount<BoundCallbackArgumentRetx>
+{
+public:
+  Ptr<RetxStatsCalculator> stats;  //!< statistics calculator
+  uint64_t imsi; //!< imsi
+  uint16_t cellId; //!< cellId
+};
+
+struct BoundCallbackArgumentMacTx : public SimpleRefCount<BoundCallbackArgumentMacTx>
+{
+public:
+  Ptr<MacTxStatsCalculator> stats;  //!< statistics calculator
+};
+
 /**
  * Callback function for DL TX statistics for both RLC and PDCP
- * \param arg
- * \param path
- * \param rnti
- * \param lcid
- * \param packetSize
+ * /param arg
+ * /param path
+ * /param rnti
+ * /param lcid
+ * /param packetSize
  */
 void
 DlTxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
@@ -74,12 +92,12 @@ DlTxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
 
 /**
  * Callback function for DL RX statistics for both RLC and PDCP
- * \param arg
- * \param path
- * \param rnti
- * \param lcid
- * \param packetSize
- * \param delay
+ * /param arg
+ * /param path
+ * /param rnti
+ * /param lcid
+ * /param packetSize
+ * /param delay
  */
 void
 DlRxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
@@ -91,61 +109,96 @@ DlRxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
 
 /**
  * Callback function for UL TX statistics for both RLC and PDCP
- * \param arg
- * \param path
- * \param rnti
- * \param lcid
- * \param packetSize
+ * /param arg
+ * /param path
+ * /param rnti
+ * /param lcid
+ * /param packetSize
  */
 void
 UlTxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
                  uint16_t rnti, uint8_t lcid, uint32_t packetSize)
 {
   NS_LOG_FUNCTION (path << rnti << (uint16_t)lcid << packetSize);
- 
+
   arg->stats->UlTxPdu (arg->cellId, arg->imsi, rnti, lcid, packetSize);
 }
 
 /**
  * Callback function for UL RX statistics for both RLC and PDCP
- * \param arg
- * \param path
- * \param rnti
- * \param lcid
- * \param packetSize
- * \param delay
+ * /param arg
+ * /param path
+ * /param rnti
+ * /param lcid
+ * /param packetSize
+ * /param delay
  */
 void
 UlRxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
                  uint16_t rnti, uint8_t lcid, uint32_t packetSize, uint64_t delay)
 {
   NS_LOG_FUNCTION (path << rnti << (uint16_t)lcid << packetSize << delay);
- 
+
   arg->stats->UlRxPdu (arg->cellId, arg->imsi, rnti, lcid, packetSize, delay);
 }
 
+void
+DlRetxCallback (Ptr<BoundCallbackArgumentRetx> arg, std::string path,
+                 uint16_t rnti, uint8_t lcid, uint32_t packetSize, uint32_t numRetx)
+{
+  NS_LOG_FUNCTION(path << arg->stats << arg->imsi);
+  arg->stats->RegisterRetxDl(arg->imsi, arg->cellId, rnti, lcid, packetSize, numRetx);
+}
+
+void
+UlRetxCallback (Ptr<BoundCallbackArgumentRetx> arg, std::string path,
+                 uint16_t rnti, uint8_t lcid, uint32_t packetSize, uint32_t numRetx)
+{
+  NS_LOG_FUNCTION(path << arg->stats << arg->imsi);
+  arg->stats->RegisterRetxUl(arg->imsi, arg->cellId, rnti, lcid, packetSize, numRetx);
+}
+
+void
+NotifyDlMacTx (Ptr<BoundCallbackArgumentMacTx> arg, std::string path, uint16_t rnti, uint16_t cellId, uint32_t packetSize, uint8_t numRetx)
+{
+  NS_LOG_FUNCTION(path << rnti << cellId << packetSize << (uint32_t)numRetx);
+  arg->stats->RegisterMacTxDl(rnti, cellId, packetSize, numRetx);
+}
 
 
 RadioBearerStatsConnector::RadioBearerStatsConnector ()
   : m_connected (false)
 {
+  m_retxStats = CreateObject<RetxStatsCalculator> ();
+  m_macTxStats = CreateObject<MacTxStatsCalculator> ();
 }
 
-void 
+void
 RadioBearerStatsConnector::EnableRlcStats (Ptr<RadioBearerStatsCalculator> rlcStats)
 {
   m_rlcStats = rlcStats;
   EnsureConnected ();
 }
 
-void 
+void
 RadioBearerStatsConnector::EnablePdcpStats (Ptr<RadioBearerStatsCalculator> pdcpStats)
 {
   m_pdcpStats = pdcpStats;
   EnsureConnected ();
 }
 
-void 
+// TypeId
+// RadioBearerStatsConnector::GetTypeId (void)
+// {
+//   static TypeId tid =
+//     TypeId ("ns3::RadioBearerStatsConnector")
+//     .SetParent<Object> ()
+//     .AddConstructor<RadioBearerStatsConnector> ()
+//     .SetGroupName("Lte");
+//   return tid;
+// }
+
+void
 RadioBearerStatsConnector::EnsureConnected ()
 {
   NS_LOG_FUNCTION (this);
@@ -167,65 +220,76 @@ RadioBearerStatsConnector::EnsureConnected ()
 		       MakeBoundCallback (&RadioBearerStatsConnector::NotifyHandoverEndOkEnb, this));
       Config::Connect ("/NodeList/*/DeviceList/*/LteUeRrc/HandoverEndOk",
 		       MakeBoundCallback (&RadioBearerStatsConnector::NotifyHandoverEndOkUe, this));
+      // MAC related callback
+      if(m_macTxStats)
+      {
+        Ptr<BoundCallbackArgumentMacTx> arg = Create<BoundCallbackArgumentMacTx>();
+        arg->stats = m_macTxStats;
+        Config::Connect ("/NodeList/*/DeviceList/*/MmWaveEnbMac/DlMacTxCallback",
+           MakeBoundCallback (&NotifyDlMacTx, arg));
+      }
       m_connected = true;
     }
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyRandomAccessSuccessfulUe (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   c->ConnectSrb0Traces (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyConnectionSetupUe (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   c->ConnectSrb1TracesUe (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyConnectionReconfigurationUe (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   c->ConnectTracesUeIfFirstTime (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyHandoverStartUe (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti, uint16_t targetCellId)
 {
   c->DisconnectTracesUe (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyHandoverEndOkUe (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
-  c->ConnectTracesUe (context, imsi, cellId, rnti);
+  c->ConnectSrb1TracesUe (context, imsi, cellId, rnti);
+  c->ConnectDrbTracesUe (context, imsi, cellId, rnti);
+
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyNewUeContextEnb (RadioBearerStatsConnector* c, std::string context, uint16_t cellId, uint16_t rnti)
 {
   c->StoreUeManagerPath (context, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyConnectionReconfigurationEnb (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   c->ConnectTracesEnbIfFirstTime (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyHandoverStartEnb (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti, uint16_t targetCellId)
 {
   c->DisconnectTracesEnb (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::NotifyHandoverEndOkEnb (RadioBearerStatsConnector* c, std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
-  c->ConnectTracesEnb (context, imsi, cellId, rnti);
+  c->ConnectSrb1TracesEnb (context, imsi, cellId, rnti);
+  c->ConnectDrbTracesEnb (context, imsi, cellId, rnti);
 }
 
-void 
+void
 RadioBearerStatsConnector::StoreUeManagerPath (std::string context, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << context << cellId << rnti);
@@ -237,7 +301,7 @@ RadioBearerStatsConnector::StoreUeManagerPath (std::string context, uint16_t cel
   m_ueManagerPathByCellIdRnti[key] = ueManagerPath.str ();
 }
 
-void 
+void
 RadioBearerStatsConnector::ConnectSrb0Traces (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << imsi << cellId << rnti);
@@ -247,7 +311,7 @@ RadioBearerStatsConnector::ConnectSrb0Traces (std::string context, uint64_t imsi
   key.rnti = rnti;
   std::map<CellIdRnti, std::string>::iterator it = m_ueManagerPathByCellIdRnti.find (key);
   NS_ASSERT (it != m_ueManagerPathByCellIdRnti.end ());
-  std::string ueManagerPath = it->second;  
+  std::string ueManagerPath = it->second;
   NS_LOG_LOGIC (this << " ueManagerPath: " << ueManagerPath);
   m_ueManagerPathByCellIdRnti.erase (it);
 
@@ -255,7 +319,7 @@ RadioBearerStatsConnector::ConnectSrb0Traces (std::string context, uint64_t imsi
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_rlcStats;
 
       // diconnect eventually previously connected SRB0 both at UE and eNB
@@ -288,7 +352,7 @@ RadioBearerStatsConnector::ConnectSrb0Traces (std::string context, uint64_t imsi
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_pdcpStats;
 
       // connect SRB1 at eNB only (at UE SRB1 will be setup later)
@@ -299,7 +363,81 @@ RadioBearerStatsConnector::ConnectSrb0Traces (std::string context, uint64_t imsi
     }
 }
 
-void 
+void
+RadioBearerStatsConnector::ConnectTracesUeIfFirstTime (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
+{
+  NS_LOG_FUNCTION (this << context);
+
+  //Connect PDCP and RLC traces for SRB1
+  if(m_imsiSeenUeSrb.find (imsi) == m_imsiSeenUeSrb.end ())
+  {
+      m_imsiSeenUeSrb.insert (imsi);
+      ConnectSrb1TracesUe (context, imsi, cellId, rnti);
+  }
+
+  //Look for the RLCs
+  std::string basePath = context.substr (0, context.rfind ("/"));
+  Config::MatchContainer rlc_container = Config::LookupMatches( basePath + "/DataRadioBearerMap/*/LteRlc/");
+  uint16_t numberOfRlc = rlc_container.GetN();
+
+  //Connect PDCP and RLC for data radio bearers
+  std::map<uint64_t,uint16_t>::iterator it = m_imsiSeenUeDrb.find(imsi);
+  if (it == m_imsiSeenUeDrb.end () && numberOfRlc > 0)
+    {
+      //If it is the first time for this imsi
+      NS_LOG_DEBUG("Insert imsi " + std::to_string(imsi));
+      m_imsiSeenUeDrb.insert (m_imsiSeenUeDrb.end(), std::pair<uint64_t,uint16_t>(imsi, 1));
+      ConnectDrbTracesUe (context, imsi, cellId, rnti);
+    }
+  else
+    {
+      if(it->second < numberOfRlc)
+      {
+        //If this imsi has already been connected but a new DRB is established
+        NS_LOG_DEBUG("There is a new RLC. Call ConnectDrbTracesUe to connect the traces.");
+        it->second ++; //TODO Check if there could be more than one RLC to connect
+        ConnectDrbTracesUe (context, imsi, cellId, rnti);
+      }
+      else
+      {
+        it->second = numberOfRlc; //One or more DRBs could have been removed
+        NS_LOG_DEBUG("All RLCs traces are already connected. No need for a call to ConnectDrbTracesUe.");
+      }
+    }
+
+    //Debug: print map
+    for( std::map<uint64_t,uint16_t>::const_iterator it2 = m_imsiSeenUeDrb.begin(); it2!=m_imsiSeenUeDrb.end(); ++it2 )
+    {
+      NS_LOG_DEBUG("imsi " + std::to_string(it2->first) + "\tnum of rlc " + std::to_string(it2->second));
+    }
+}
+
+void
+RadioBearerStatsConnector::ConnectTracesEnbIfFirstTime (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
+{
+  NS_LOG_FUNCTION (this << context);
+
+  //Connect PDCP and RLC traces for SRB1
+  if(m_imsiSeenEnbSrb.find (imsi) == m_imsiSeenEnbSrb.end ())
+  {
+    m_imsiSeenEnbSrb.insert (imsi);
+    ConnectSrb1TracesEnb (context, imsi, cellId, rnti);
+  }
+
+  //Connect PDCP and RLC for data radio bearers
+  //Look for the RLCs
+  std::string basePath = context.substr (0, context.rfind ("/")) + "/UeMap/" + std::to_string((uint32_t) rnti);
+  Config::MatchContainer rlc_container = Config::LookupMatches(basePath +  "/DataRadioBearerMap/*/LteRlc/");
+
+   if (m_imsiSeenEnbDrb.find (imsi) == m_imsiSeenEnbDrb.end () && rlc_container.GetN() > 0)
+    {
+      //it is executed only if there exist at least one rlc layer
+      m_imsiSeenEnbDrb.insert (imsi);
+      ConnectDrbTracesEnb (context, imsi, cellId, rnti);
+    }
+}
+
+void
 RadioBearerStatsConnector::ConnectSrb1TracesUe (std::string ueRrcPath, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << imsi << cellId << rnti);
@@ -307,7 +445,7 @@ RadioBearerStatsConnector::ConnectSrb1TracesUe (std::string ueRrcPath, uint64_t 
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_rlcStats;
       Config::Connect (ueRrcPath + "/Srb1/LteRlc/TxPDU",
                        MakeBoundCallback (&UlTxPduCallback, arg));
@@ -318,39 +456,17 @@ RadioBearerStatsConnector::ConnectSrb1TracesUe (std::string ueRrcPath, uint64_t 
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_pdcpStats;
       Config::Connect (ueRrcPath + "/Srb1/LtePdcp/RxPDU",
-		       MakeBoundCallback (&DlRxPduCallback, arg));
+           MakeBoundCallback (&DlRxPduCallback, arg));
       Config::Connect (ueRrcPath + "/Srb1/LtePdcp/TxPDU",
-		       MakeBoundCallback (&UlTxPduCallback, arg));
-    }
-}
-  
-void 
-RadioBearerStatsConnector::ConnectTracesUeIfFirstTime (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
-{
-  NS_LOG_FUNCTION (this << context);
-  if (m_imsiSeenUe.find (imsi) == m_imsiSeenUe.end ())
-    {
-      m_imsiSeenUe.insert (imsi);
-      ConnectTracesUe (context, imsi, cellId, rnti);
-    }
-}
- 
-void 
-RadioBearerStatsConnector::ConnectTracesEnbIfFirstTime (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
-{
-  NS_LOG_FUNCTION (this << context);
-   if (m_imsiSeenEnb.find (imsi) == m_imsiSeenEnb.end ())
-    {
-      m_imsiSeenEnb.insert (imsi);
-      ConnectTracesEnb (context, imsi, cellId, rnti);
+           MakeBoundCallback (&UlTxPduCallback, arg));
     }
 }
 
-void 
-RadioBearerStatsConnector::ConnectTracesUe (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
+void
+RadioBearerStatsConnector::ConnectDrbTracesUe (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << context);
   NS_LOG_LOGIC (this << "expected context should match /NodeList/*/DeviceList/*/LteUeRrc/");
@@ -359,15 +475,11 @@ RadioBearerStatsConnector::ConnectTracesUe (std::string context, uint64_t imsi, 
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_rlcStats;
       Config::Connect (basePath + "/DataRadioBearerMap/*/LteRlc/TxPDU",
 		       MakeBoundCallback (&UlTxPduCallback, arg));
       Config::Connect (basePath + "/DataRadioBearerMap/*/LteRlc/RxPDU",
-		       MakeBoundCallback (&DlRxPduCallback, arg));
-      Config::Connect (basePath + "/Srb1/LteRlc/TxPDU",
-		       MakeBoundCallback (&UlTxPduCallback, arg));
-      Config::Connect (basePath + "/Srb1/LteRlc/RxPDU",
 		       MakeBoundCallback (&DlRxPduCallback, arg));
 
     }
@@ -375,21 +487,26 @@ RadioBearerStatsConnector::ConnectTracesUe (std::string context, uint64_t imsi, 
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_pdcpStats;
       Config::Connect (basePath + "/DataRadioBearerMap/*/LtePdcp/RxPDU",
 		       MakeBoundCallback (&DlRxPduCallback, arg));
       Config::Connect (basePath + "/DataRadioBearerMap/*/LtePdcp/TxPDU",
 		       MakeBoundCallback (&UlTxPduCallback, arg));
-      Config::Connect (basePath + "/Srb1/LtePdcp/RxPDU",
-		       MakeBoundCallback (&DlRxPduCallback, arg));
-      Config::Connect (basePath + "/Srb1/LtePdcp/TxPDU",
-		       MakeBoundCallback (&UlTxPduCallback, arg));
+    }
+  if (m_retxStats) // TODO set condition
+    {
+      Ptr<BoundCallbackArgumentRetx> arg = Create<BoundCallbackArgumentRetx> ();
+      arg->imsi = imsi;
+      arg->cellId = cellId;
+      arg->stats = m_retxStats;
+      Config::Connect (basePath + "/DataRadioBearerMap/*/LteRlc/TxCompletedCallback",
+         MakeBoundCallback (&UlRetxCallback, arg));
     }
 }
 
-void 
-RadioBearerStatsConnector::ConnectTracesEnb (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
+void
+RadioBearerStatsConnector::ConnectSrb1TracesEnb (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << context);
   NS_LOG_LOGIC (this << "expected context  should match /NodeList/*/DeviceList/*/LteEnbRrc/");
@@ -399,12 +516,8 @@ RadioBearerStatsConnector::ConnectTracesEnb (std::string context, uint64_t imsi,
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_rlcStats;
-      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LteRlc/RxPDU",
-		       MakeBoundCallback (&UlRxPduCallback, arg));
-      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LteRlc/TxPDU",
-		       MakeBoundCallback (&DlTxPduCallback, arg));
       Config::Connect (basePath.str () + "/Srb0/LteRlc/RxPDU",
 		       MakeBoundCallback (&UlRxPduCallback, arg));
       Config::Connect (basePath.str () + "/Srb0/LteRlc/TxPDU",
@@ -418,12 +531,8 @@ RadioBearerStatsConnector::ConnectTracesEnb (std::string context, uint64_t imsi,
     {
       Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
       arg->imsi = imsi;
-      arg->cellId = cellId; 
+      arg->cellId = cellId;
       arg->stats = m_pdcpStats;
-      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LtePdcp/TxPDU",
-		       MakeBoundCallback (&DlTxPduCallback, arg));
-      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LtePdcp/RxPDU",
-		       MakeBoundCallback (&UlRxPduCallback, arg));
       Config::Connect (basePath.str () + "/Srb1/LtePdcp/TxPDU",
 		       MakeBoundCallback (&DlTxPduCallback, arg));
       Config::Connect (basePath.str () + "/Srb1/LtePdcp/RxPDU",
@@ -431,14 +540,55 @@ RadioBearerStatsConnector::ConnectTracesEnb (std::string context, uint64_t imsi,
     }
 }
 
-void 
+void
+RadioBearerStatsConnector::ConnectDrbTracesEnb (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
+{
+  NS_LOG_FUNCTION (this << context);
+  NS_LOG_LOGIC (this << "expected context  should match /NodeList/*/DeviceList/*/LteEnbRrc/");
+  std::ostringstream basePath;
+  basePath <<  context.substr (0, context.rfind ("/")) << "/UeMap/" << (uint32_t) rnti;
+  if (m_rlcStats)
+    {
+      Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
+      arg->imsi = imsi;
+      arg->cellId = cellId;
+      arg->stats = m_rlcStats;
+      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LteRlc/RxPDU",
+		       MakeBoundCallback (&UlRxPduCallback, arg));
+      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LteRlc/TxPDU",
+		       MakeBoundCallback (&DlTxPduCallback, arg));
+    }
+  if (m_pdcpStats)
+    {
+      Ptr<BoundCallbackArgument> arg = Create<BoundCallbackArgument> ();
+      arg->imsi = imsi;
+      arg->cellId = cellId;
+      arg->stats = m_pdcpStats;
+      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LtePdcp/TxPDU",
+		       MakeBoundCallback (&DlTxPduCallback, arg));
+      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LtePdcp/RxPDU",
+		       MakeBoundCallback (&UlRxPduCallback, arg));
+    }
+  if (m_retxStats)
+    {
+      Ptr<BoundCallbackArgumentRetx> arg = Create<BoundCallbackArgumentRetx> ();
+      arg->imsi = imsi;
+      arg->cellId = cellId;
+      arg->stats = m_retxStats;
+      Config::Connect (basePath.str () + "/DataRadioBearerMap/*/LteRlc/TxCompletedCallback",
+         MakeBoundCallback (&DlRetxCallback, arg));
+    }
+}
+
+
+void
 RadioBearerStatsConnector::DisconnectTracesUe (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this);
 }
 
 
-void 
+void
 RadioBearerStatsConnector::DisconnectTracesEnb (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this);

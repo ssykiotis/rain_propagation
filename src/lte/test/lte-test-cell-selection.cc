@@ -398,7 +398,7 @@ LteCellSelectionTestCase::StateTransitionCallback (
   LteUeRrc::State oldState, LteUeRrc::State newState)
 {
   NS_LOG_FUNCTION (this << imsi << cellId << rnti << oldState << newState);
-  m_lastState.at (static_cast<unsigned int>(imsi - 1)) = newState;
+  m_lastState.at (static_cast<unsigned int>(imsi - 1)) = newState; 
 }
 
 

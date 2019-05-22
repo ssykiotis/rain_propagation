@@ -53,7 +53,7 @@ NS_LOG_COMPONENT_DEFINE("LteHandoverDelayTest");
  * \ingroup lte-test
  * \ingroup tests
  *
- * \brief Verifying that the time needed for handover is under a 
+ * \brief Verifying that the time needed for handover is under a
  * specified threshold.
  */
 
@@ -63,7 +63,6 @@ public:
   /**
    * Constructor
    *
-   *\param numberOfComponentCarriers number of component carriers
    * \param useIdealRrc if true, use the ideal RRC
    * \param handoverTime the time of handover
    * \param delayThreshold the delay threshold
@@ -123,7 +122,7 @@ private:
   void EnbHandoverEndOkCallback (std::string context, uint64_t imsi,
       uint16_t cellid, uint16_t rnti);
 
-  uint8_t m_numberOfComponentCarriers; ///< Number of component carriers
+  uint8_t m_numberOfComponentCarriers;
   bool m_useIdealRrc; ///< use ideal RRC?
   Time m_handoverTime; ///< handover time
   Time m_delayThreshold; ///< the delay threshold
@@ -144,6 +143,8 @@ LteHandoverDelayTestCase::DoRun ()
    * Helpers.
    */
   auto epcHelper = CreateObject<PointToPointEpcHelper> ();
+  epcHelper -> SetAttribute("S1apLinkDelay",TimeValue(Seconds(0)));
+  epcHelper -> SetAttribute("S1apLinkDataRate", DataRateValue(DataRate("1Gb/s")));
 
   auto lteHelper = CreateObject<LteHelper> ();
   lteHelper->SetEpcHelper (epcHelper);
@@ -302,7 +303,7 @@ public:
       {
         // arguments: useIdealRrc, handoverTime, delayThreshold, simulationDuration
         AddTestCase (
-            new LteHandoverDelayTestCase (1, false, handoverTime, Seconds (0.020),
+          new LteHandoverDelayTestCase (1, false, handoverTime, Seconds (0.020),
                 Seconds (0.200)), TestCase::QUICK);
       }
   }

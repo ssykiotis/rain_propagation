@@ -73,6 +73,13 @@ public:
     uint32_t retxQueueSize;  /**<  the current size of the RLC retransmission queue in bytes */
     uint16_t retxQueueHolDelay;  /**<  the Head Of Line delay of the retransmission queue */
     uint16_t statusPduSize;  /**< the current size of the pending STATUS RLC  PDU message in bytes */
+
+    // RDF: Added for MmWave low-latency schedulers
+    std::list<uint32_t>	txPacketSizes;
+    std::list<uint32_t>	retxPacketSizes;
+    std::list<double>	txPacketDelays;
+    std::list<double>	retxPacketDelays;
+    double arrivalRate;		// average bits per s
   };
 
   /**
@@ -117,6 +124,9 @@ public:
    */
   virtual void NotifyHarqDeliveryFailure () = 0;
 
+  virtual void NotifyDlHarqDeliveryFailure (uint8_t harqId);
+
+  virtual void NotifyUlHarqDeliveryFailure (uint8_t harqId);
 
   /**
    * Called by the MAC to notify the RLC of the reception of a new PDU

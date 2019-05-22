@@ -272,17 +272,10 @@ RadioBearerStatsCalculator::WriteUlResults (std::ofstream& outFile)
 {
   NS_LOG_FUNCTION (this);
 
-  // Get the unique IMSI/LCID pairs list
+  // Get the unique IMSI / LCID list
+
   std::vector < ImsiLcidPair_t > pairVector;
   for (Uint32Map::iterator it = m_ulTxPackets.begin (); it != m_ulTxPackets.end (); ++it)
-    {
-      if (find (pairVector.begin (), pairVector.end (), (*it).first) == pairVector.end ())
-        {
-          pairVector.push_back ((*it).first);
-        }
-    }
-
-  for (Uint32Map::iterator it = m_ulRxPackets.begin (); it != m_ulRxPackets.end (); ++it)
     {
       if (find (pairVector.begin (), pairVector.end (), (*it).first) == pairVector.end ())
         {
@@ -333,17 +326,9 @@ RadioBearerStatsCalculator::WriteDlResults (std::ofstream& outFile)
 {
   NS_LOG_FUNCTION (this);
 
-  // Get the unique IMSI/LCID pairs list
+  // Get the unique IMSI list
   std::vector < ImsiLcidPair_t > pairVector;
   for (Uint32Map::iterator it = m_dlTxPackets.begin (); it != m_dlTxPackets.end (); ++it)
-    {
-      if (find (pairVector.begin (), pairVector.end (), (*it).first) == pairVector.end ())
-        {
-          pairVector.push_back ((*it).first);
-        }
-    }
-
-  for (Uint32Map::iterator it = m_dlRxPackets.begin (); it != m_dlRxPackets.end (); ++it)
     {
       if (find (pairVector.begin (), pairVector.end (), (*it).first) == pairVector.end ())
         {

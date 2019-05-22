@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Manuel Requena <manuel.requena@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #ifndef LTE_RLC_UM_H
@@ -23,6 +27,7 @@
 
 #include "ns3/lte-rlc-sequence-number.h"
 #include "ns3/lte-rlc.h"
+#include <ns3/epc-x2-sap.h>
 
 #include <ns3/event-id.h>
 #include <map>
@@ -44,12 +49,19 @@ public:
   static TypeId GetTypeId (void);
   virtual void DoDispose ();
 
+  uint32_t GetMaxBuff();
+
   /**
    * RLC SAP
    *
    * \param p packet
    */
   virtual void DoTransmitPdcpPdu (Ptr<Packet> p);
+
+  /**
+   * RLC EPC X2 SAP
+   */
+  virtual void DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params);
 
   /**
    * MAC SAP
@@ -64,6 +76,12 @@ public:
   virtual void DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId, uint8_t componentCarrierId, uint16_t rnti, uint8_t lcid);
   virtual void DoNotifyHarqDeliveryFailure ();
   virtual void DoReceivePdu (Ptr<Packet> p, uint16_t rnti, uint8_t lcid);
+
+  std::vector < Ptr<Packet> > GetTxBuffer();
+  uint32_t GetTxBufferSize()
+  {
+    return m_txBufferSize;
+  }
 
 private:
   /// Expire reordering timer
@@ -95,6 +113,7 @@ private:
    * \param packet the packet
    */
   void ReassembleAndDeliver (Ptr<Packet> packet);
+  void TriggerReceivePdcpPdu(Ptr<Packet> p);
 
   /// Report buffer status
   void DoReportBufferStatus ();
@@ -142,6 +161,8 @@ private:
    */
   SequenceNumber10 m_expectedSeqNumber;
 
+  Time m_rbsTimerValue;
+  Time m_reorderingTimerValue;
 };
 
 

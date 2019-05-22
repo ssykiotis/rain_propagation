@@ -45,7 +45,7 @@ public:
  * \ingroup tests
  *
  * Test cases used for the test suite lte-rlc-am-e2e. See the testing section of
- * the LTE module documentation for details.  
+ * the LTE module documentation for details.
  */
 class LteRlcAmE2eTestCase : public TestCase
 {
@@ -58,7 +58,7 @@ class LteRlcAmE2eTestCase : public TestCase
    * \param losses the error rate
    * \param bulkSduArrival true if bulk SDU arrival
    */
-    LteRlcAmE2eTestCase (std::string name, uint32_t seed, double losses, bool bulkSduArrival);
+  LteRlcAmE2eTestCase (std::string name, uint32_t seed, double losses, bool bulkSduArrival);
     LteRlcAmE2eTestCase ();
     virtual ~LteRlcAmE2eTestCase ();
 

@@ -261,7 +261,7 @@ LteRlcAmHeader::IsNackPresent (SequenceNumber10 nack)
           return true;
         }
     }
-  return false;  
+  return false;
 }
 
 int
@@ -357,7 +357,7 @@ LteRlcAmHeader::Print (std::ostream &os)  const
           it3++;
         }
 
- 
+
     }
 }
 
@@ -428,7 +428,7 @@ void LteRlcAmHeader::Serialize (Buffer::Iterator start) const
       // note: second part of ackSn will be written later
 
       // serialize the NACKs
-      if ( it3 == m_nackSnList.end () ) 
+      if ( it3 == m_nackSnList.end () )
         {
           NS_LOG_LOGIC (this << " no NACKs");
            // If there are no NACKs then this line adds the rest of the ACK
@@ -525,10 +525,16 @@ uint32_t LteRlcAmHeader::Deserialize (Buffer::Iterator start)
       m_sequenceNumber     = ((byte_1 & 0x03) << 8) | byte_2;
 
       m_lastSegmentFlag    = (byte_3 & 0x80) >> 7;
-      m_segmentOffset      = (byte_3 & 0x7F) | byte_4;
+      m_segmentOffset      = ((byte_3 & 0x7F) << 8) | byte_4;
 
       extensionBit = (byte_1 & 0x04) >> 2;
       m_extensionBits.push_back (extensionBit);
+
+      if (m_resegmentationFlag == SEGMENT)
+        {
+          // initialize m_lastOffset
+          m_lastOffset = m_segmentOffset + start.GetSize () - m_headerLength;
+        }
 
       if (extensionBit == DATA_FIELD_FOLLOWS)
         {
@@ -569,7 +575,8 @@ uint32_t LteRlcAmHeader::Deserialize (Buffer::Iterator start)
 
       if (m_resegmentationFlag == SEGMENT)
         {
-          m_lastOffset = m_segmentOffset + start.GetSize () - m_headerLength; 
+          // update m_lastOffset
+          m_lastOffset = m_segmentOffset + start.GetSize () - m_headerLength;
         }
     }
   else // if ( m_dataControlBit == CONTROL_PDU )

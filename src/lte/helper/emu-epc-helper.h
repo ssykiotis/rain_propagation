@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011-2013 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,6 +19,9 @@
  * Author: Jaume Nin <jnin@cttc.es>
  *         Nicola Baldo <nbaldo@cttc.es>
  *         Manuel Requena <manuel.requena@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Support for real S1AP link
  */
 
 #ifndef EMU_EPC_HELPER_H
@@ -38,33 +42,36 @@ class NetDevice;
 class VirtualNetDevice;
 class EpcSgwPgwApplication;
 class EpcX2;
-class EpcMme;
+class EpcUeNas;
+class EpcMmeApplication;
+class EpcS1apEnb;
+class EpcS1apMme;
 
 /**
  * \ingroup lte
  *
- * \brief Create an EPC network using EmuFdNetDevice 
+ * \brief Create an EPC network using EmuFdNetDevice
  *
  * This Helper will create an EPC network topology comprising of a
  * single node that implements both the SGW and PGW functionality, and
  * an MME node. The S1-U, X2-U and X2-C interfaces are realized using
  * EmuFdNetDevice; in particular, one device is used to send all the
- * traffic related to these interfaces. 
+ * traffic related to these interfaces.
  */
 class EmuEpcHelper : public EpcHelper
 {
 public:
-  
-  /** 
+
+  /**
    * Constructor
    */
   EmuEpcHelper ();
 
-  /** 
+  /**
    * Destructor
-   */  
+   */
   virtual ~EmuEpcHelper ();
-  
+
   // inherited from Object
   /**
    *  Register this type.
@@ -80,6 +87,7 @@ public:
   virtual void AddUe (Ptr<NetDevice> ueLteDevice, uint64_t imsi);
   virtual void AddX2Interface (Ptr<Node> enbNode1, Ptr<Node> enbNode2);
   virtual uint8_t ActivateEpsBearer (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer);
+  virtual uint8_t ActivateEpsBearer (Ptr<NetDevice> ueLteDevice, Ptr<EpcUeNas> ueNas, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer);
   virtual Ptr<Node> GetPgwNode ();
   virtual Ipv4InterfaceContainer AssignUeIpv4Address (NetDeviceContainer ueDevices);
   virtual Ipv6InterfaceContainer AssignUeIpv6Address (NetDeviceContainer ueDevices);
@@ -89,20 +97,26 @@ public:
 
 private:
 
-  /** 
+  /**
    * helper to assign IPv4 addresses to UE devices as well as to the TUN device of the SGW/PGW
    */
-  Ipv4AddressHelper m_uePgwAddressHelper; 
+  Ipv4AddressHelper m_uePgwAddressHelper;
 
-  /** 
+  /**
    * helper to assign IPv6 addresses to UE devices as well as to the TUN device of the SGW/PGW
    */
-  Ipv6AddressHelper m_uePgwAddressHelper6; 
+  Ipv6AddressHelper m_uePgwAddressHelper6;
+
+  /**
+   * helper to assign addresses to S1-AP NetDevices
+   */
+  Ipv4AddressHelper m_s1apIpv4AddressHelper;
+
 
   /**
    * SGW-PGW network element
-   */  
-  Ptr<Node> m_sgwPgw; 
+   */
+  Ptr<Node> m_sgwPgw;
 
   /**
    * SGW-PGW application
@@ -110,19 +124,24 @@ private:
   Ptr<EpcSgwPgwApplication> m_sgwPgwApp;
 
   /**
-   * TUN device containing IPv4 address and implementing tunneling of user data over GTP-U/UDP/IP
+   * TUN device containing IPv4 address and  implementing tunneling of user data over GTP-U/UDP/IP
    */
   Ptr<VirtualNetDevice> m_tunDevice;
 
   /**
    * MME network element
    */
-  Ptr<EpcMme> m_mme;
+  Ptr<Node> m_mmeNode;
 
-  /** 
-   * helper to assign addresses to S1-U NetDevices 
+  /**
+   * MME application
    */
-  Ipv4AddressHelper m_epcIpv4AddressHelper; 
+  Ptr<EpcMmeApplication> m_mmeApp;
+
+  /**
+   * helper to assign addresses to S1-U NetDevices
+   */
+  Ipv4AddressHelper m_epcIpv4AddressHelper;
 
   /**
    * UDP port where the GTP-U Socket is bound, fixed by the standard as 2152
@@ -130,15 +149,36 @@ private:
   uint16_t m_gtpuUdpPort;
 
   /**
+   * The data rate to be used for the next S1-AP link to be created
+   */
+  DataRate m_s1apLinkDataRate;
+
+  /**
+   * The delay to be used for the next S1-AP link to be created
+   */
+  Time     m_s1apLinkDelay;
+
+  /**
+   * The MTU of the next S1-AP link to be created.
+   */
+  uint16_t m_s1apLinkMtu;
+
+  /**
+   * UDP port where the UDP Socket is bound, fixed by the standard as
+   * 36412 (it should be sctp, but it is not supported in ns-3)
+   */
+  uint16_t m_s1apUdpPort;
+
+  /**
    * Map storing for each IMSI the corresponding eNB NetDevice
-   * 
+   *
    */
   std::map<uint64_t, Ptr<NetDevice> > m_imsiEnbDeviceMap;
 
   /**
    * Container for Ipv4Interfaces of the SGW/PGW
    */
-  Ipv4InterfaceContainer m_sgwIpIfaces; 
+  Ipv4InterfaceContainer m_sgwIpIfaces;
 
   /**
    * The name of the device used for the S1-U interface of the SGW
@@ -159,7 +199,7 @@ private:
    * First 5 bytes of the Enb MAC address base
    */
   std::string m_enbMacAddressBase;
-  
+
 };
 
 

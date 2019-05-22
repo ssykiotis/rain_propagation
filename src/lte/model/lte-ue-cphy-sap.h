@@ -1,6 +1,7 @@
 /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2011, 2012 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2016, University of Padova, Dep. of Information Engineering, SIGNET lab
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,6 +18,9 @@
  *
  * Author: Nicola Baldo <nbaldo@cttc.es>,
  *         Marco Miozzo <mmiozzo@cttc.es>
+ *
+ * Modified by: Michele Polese <michele.polese@gmail.com>
+ *          Dual Connectivity functionalities
  */
 
 #ifndef LTE_UE_CPHY_SAP_H
@@ -42,14 +46,14 @@ class LteUeCphySapProvider
 {
 public:
 
-  /** 
+  /**
    * destructor
    */
   virtual ~LteUeCphySapProvider ();
 
-  /** 
+  /**
    * reset the PHY
-   * 
+   *
    */
   virtual void Reset () = 0;
 
@@ -66,7 +70,7 @@ public:
    * and periodically returning measurement reports to RRC via
    * LteUeCphySapUser::ReportUeMeasurements function.
    */
-  virtual void StartCellSearch (uint32_t dlEarfcn) = 0;
+   virtual void StartCellSearch (uint32_t dlEarfcn) = 0;
 
   /**
    * \brief Tell the PHY entity to synchronize with a given eNodeB over the
@@ -108,9 +112,9 @@ public:
    */
   virtual void SetDlBandwidth (uint8_t dlBandwidth) = 0;
 
-  /** 
+  /**
    * \brief Configure uplink (normally done after reception of SIB2)
-   * 
+   *
    * \param ulEarfcn the uplink carrier frequency (EARFCN)
    * \param ulBandwidth the UL bandwidth in number of PRBs
    */
@@ -123,8 +127,8 @@ public:
    */
   virtual void ConfigureReferenceSignalPower (int8_t referenceSignalPower) = 0;
 
-  /** 
-   * 
+  /**
+   *
    * \param rnti the cell-specific UE identifier
    */
   virtual void SetRnti (uint16_t rnti) = 0;
@@ -157,7 +161,7 @@ class LteUeCphySapUser
 {
 public:
 
-  /** 
+  /**
    * destructor
    */
   virtual ~LteUeCphySapUser ();
@@ -186,7 +190,7 @@ public:
    * \brief Relay an MIB message from the PHY entity to the RRC layer.
    * \param cellId the ID of the eNodeB where the message originates from
    * \param mib the Master Information Block message
-   * 
+   *
    * This function is typically called after PHY receives an MIB message over
    * the BCH.
    */
@@ -211,6 +215,8 @@ public:
    */
   virtual void ReportUeMeasurements (UeMeasurementsParameters params) = 0;
 
+  virtual void NotifyRadioLinkFailure (double lastSinrValue) = 0;
+
 };
 
 
@@ -219,7 +225,7 @@ public:
 /**
  * Template for the implementation of the LteUeCphySapProvider as a member
  * of an owner class of type C to which all methods are forwarded
- * 
+ *
  */
 template <class C>
 class MemberLteUeCphySapProvider : public LteUeCphySapProvider
@@ -262,7 +268,7 @@ MemberLteUeCphySapProvider<C>::MemberLteUeCphySapProvider ()
 }
 
 template <class C>
-void 
+void
 MemberLteUeCphySapProvider<C>::Reset ()
 {
   m_owner->DoReset ();
@@ -297,14 +303,14 @@ MemberLteUeCphySapProvider<C>::SetDlBandwidth (uint8_t dlBandwidth)
 }
 
 template <class C>
-void 
+void
 MemberLteUeCphySapProvider<C>::ConfigureUplink (uint32_t ulEarfcn, uint8_t ulBandwidth)
 {
   m_owner->DoConfigureUplink (ulEarfcn, ulBandwidth);
 }
 
 template <class C>
-void 
+void
 MemberLteUeCphySapProvider<C>::ConfigureReferenceSignalPower (int8_t referenceSignalPower)
 {
   m_owner->DoConfigureReferenceSignalPower (referenceSignalPower);
@@ -318,14 +324,14 @@ MemberLteUeCphySapProvider<C>::SetRnti (uint16_t rnti)
 }
 
 template <class C>
-void 
+void
 MemberLteUeCphySapProvider<C>::SetTransmissionMode (uint8_t txMode)
 {
   m_owner->DoSetTransmissionMode (txMode);
 }
 
 template <class C>
-void 
+void
 MemberLteUeCphySapProvider<C>::SetSrsConfigurationIndex (uint16_t srcCi)
 {
   m_owner->DoSetSrsConfigurationIndex (srcCi);
@@ -342,7 +348,7 @@ MemberLteUeCphySapProvider<C>::SetPa (double pa)
 /**
  * Template for the implementation of the LteUeCphySapUser as a member
  * of an owner class of type C to which all methods are forwarded
- * 
+ *
  */
 template <class C>
 class MemberLteUeCphySapUser : public LteUeCphySapUser
@@ -362,6 +368,8 @@ public:
                                                 LteRrcSap::SystemInformationBlockType1 sib1);
   virtual void ReportUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params);
 
+  virtual void NotifyRadioLinkFailure (double lastSinrValue);
+
 private:
   MemberLteUeCphySapUser ();
   C* m_owner; ///< the owner class
@@ -378,8 +386,8 @@ MemberLteUeCphySapUser<C>::MemberLteUeCphySapUser ()
 {
 }
 
-template <class C> 
-void 
+template <class C>
+void
 MemberLteUeCphySapUser<C>::RecvMasterInformationBlock (uint16_t cellId,
                                                        LteRrcSap::MasterInformationBlock mib)
 {
@@ -400,6 +408,14 @@ MemberLteUeCphySapUser<C>::ReportUeMeasurements (LteUeCphySapUser::UeMeasurement
 {
   m_owner->DoReportUeMeasurements (params);
 }
+
+template <class C>
+void
+MemberLteUeCphySapUser<C>::NotifyRadioLinkFailure (double lastSinrValue)
+{
+  m_owner->DoNotifyRadioLinkFailure(lastSinrValue);
+}
+
 
 
 } // namespace ns3
