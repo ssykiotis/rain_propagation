@@ -2,7 +2,7 @@
 #include "RainGenerator.h"
 #include <bits/stdc++.h>  
 
-namespace rainprop{
+namespace ns3{
 
 RainGenerator::RainGenerator(Control controlSettings){
     this->loc.lat = controlSettings.GetLocation().lat;

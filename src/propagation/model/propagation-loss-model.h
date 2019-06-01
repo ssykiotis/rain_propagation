@@ -860,12 +860,12 @@ private:
 };
 
 class RainPropagationLossModel : public FriisPropagationLossModel
-{1 
+{
 public:
  
   static TypeId GetTypeId (void);
   RainPropagationLossModel ();
-  
+  void Run();
   
 private:
   

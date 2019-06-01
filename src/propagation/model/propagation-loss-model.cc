@@ -933,37 +933,49 @@ RangePropagationLossModel::DoAssignStreams (int64_t stream)
 
 NS_OBJECT_ENSURE_REGISTERED (RainPropagationLossModel);
 
-ypeId 
-FriisPropagationLossModel::GetTypeId (void)
+TypeId 
+RainPropagationLossModel::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::FriisPropagationLossModel")
-    .SetParent<PropagationLossModel> ()
+  static TypeId tid = TypeId ("ns3::RainPropagationLossModel")
+    .SetParent<FriisPropagationLossModel> ()
     .SetGroupName ("Propagation")
-    .AddConstructor<FriisPropagationLossModel> ()
+    .AddConstructor<RainPropagationLossModel> ()
     .AddAttribute ("Frequency", 
-                   "The carrier frequency (in Hz) at which propagation occurs  (default is 5.15 GHz).",
-                   DoubleValue (5.150e9),
-                   MakeDoubleAccessor (&FriisPropagationLossModel::SetFrequency,
-                                       &FriisPropagationLossModel::GetFrequency),
+                   "The carrier frequency (in Hz) at which propagation occurs  (default is 60 GHz).",
+                   DoubleValue (60e9),
+                   MakeDoubleAccessor (&RainPropagationLossModel::SetFrequency,
+                                       &RainPropagationLossModel::GetFrequency),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("SystemLoss", "The system loss",
                    DoubleValue (1.0),
-                   MakeDoubleAccessor (&FriisPropagationLossModel::m_systemLoss),
+                   MakeDoubleAccessor (&RainPropagationLossModel::m_systemLoss),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("MinLoss", 
                    "The minimum value (dB) of the total loss, used at short ranges. Note: ",
                    DoubleValue (0.0),
-                   MakeDoubleAccessor (&FriisPropagationLossModel::SetMinLoss,
-                                       &FriisPropagationLossModel::GetMinLoss),
+                   MakeDoubleAccessor (&RainPropagationLossModel::SetMinLoss,
+                                       &RainPropagationLossModel::GetMinLoss),
                    MakeDoubleChecker<double> ())
   ;
   return tid;
 }
 
-FriisPropagationLossModel::FriisPropagationLossModel ()
+RainPropagationLossModel::RainPropagationLossModel (double lat, double lon)
 {
+  double f = GetFrequency();
+  Control controlSettings(lat,lon,f,100);
+  this->controlSettings = controlSettings;
+  RainGenerator rainGenerator(controlSettings);
+  this->rainGenerator = rainGenerator;
+  this->rainGenerator.Run();
+
 }
 
+void
+RainPropagationLossModel::Run()
+{
+  
+};
 
 
 // ------------------------------------------------------------------------- //

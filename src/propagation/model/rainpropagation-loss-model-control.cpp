@@ -1,7 +1,7 @@
 
 #include "control.h"
 
-namespace rainprop{
+namespace ns3{
 
     Control::Control(){
         loc.lat = 0;

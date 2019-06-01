@@ -5,7 +5,7 @@
 #include "control.h"
 
 
-namespace rainprop{
+namespace ns3{
 
 
 class RainGenerator{

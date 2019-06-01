@@ -1,7 +1,7 @@
 #include "RainPropagation.h"
 #include <math.h> 
 
-namespace rainprop{
+namespace ns3{
 
  RainPropagation::RainPropagation(Control controlSettings){
     this->currval = -1;

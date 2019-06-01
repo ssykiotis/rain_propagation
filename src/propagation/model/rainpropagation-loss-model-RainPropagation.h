@@ -5,7 +5,7 @@
 #include "structs.h"
 #include "control.h"
 
-namespace rainprop{
+namespace ns3{
 class RainPropagation{
 
 public:

@@ -3,7 +3,7 @@
 
 #include "structs.h"
 
-namespace rainprop{
+namespace ns3{
 
 class Control{
     
