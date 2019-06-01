@@ -929,6 +929,42 @@ RangePropagationLossModel::DoAssignStreams (int64_t stream)
 {
   return 0;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (RainPropagationLossModel);
+
+ypeId 
+FriisPropagationLossModel::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::FriisPropagationLossModel")
+    .SetParent<PropagationLossModel> ()
+    .SetGroupName ("Propagation")
+    .AddConstructor<FriisPropagationLossModel> ()
+    .AddAttribute ("Frequency", 
+                   "The carrier frequency (in Hz) at which propagation occurs  (default is 5.15 GHz).",
+                   DoubleValue (5.150e9),
+                   MakeDoubleAccessor (&FriisPropagationLossModel::SetFrequency,
+                                       &FriisPropagationLossModel::GetFrequency),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("SystemLoss", "The system loss",
+                   DoubleValue (1.0),
+                   MakeDoubleAccessor (&FriisPropagationLossModel::m_systemLoss),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("MinLoss", 
+                   "The minimum value (dB) of the total loss, used at short ranges. Note: ",
+                   DoubleValue (0.0),
+                   MakeDoubleAccessor (&FriisPropagationLossModel::SetMinLoss,
+                                       &FriisPropagationLossModel::GetMinLoss),
+                   MakeDoubleChecker<double> ())
+  ;
+  return tid;
+}
+
+FriisPropagationLossModel::FriisPropagationLossModel ()
+{
+}
+
+
 
 // ------------------------------------------------------------------------- //
 
