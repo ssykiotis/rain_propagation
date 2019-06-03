@@ -28,10 +28,6 @@
 #include "ns3/object.h"
 #include "ns3/random-variable-stream.h"
 #include <map>
-#include <vector>
-#include "rainpropagation-loss-model-control.h"
-#include "rainpropagation-loss-model-RainGenerator.h"
-#include "rainpropagation-loss-model-RainPropagation.h"
 
 namespace ns3 {
 
@@ -838,7 +834,6 @@ public:
    */
   static TypeId GetTypeId (void);
   RangePropagationLossModel ();
-
 private:
   /**
    * \brief Copy constructor
@@ -853,42 +848,12 @@ private:
    * \returns
    */
   RangePropagationLossModel& operator= (const RangePropagationLossModel&);
-
-  
+  virtual double DoCalcRxPower (double txPowerDbm,
+                                Ptr<MobilityModel> a,
+                                Ptr<MobilityModel> b) const;
+  virtual int64_t DoAssignStreams (int64_t stream);
 private:
   double m_range; //!< Maximum Transmission Range (meters)
-};
-
-class RainPropagationLossModel : public FriisPropagationLossModel
-{
-public:
- 
-  static TypeId GetTypeId (void);
-  RainPropagationLossModel ();
-  void Run();
-  
-private:
-  
-  RainPropagationLossModel (const RainPropagationLossModel &); //defined and unimplemented
-  /**
-   * \brief Copy constructor
-   *
-   * Defined and unimplemented to avoid misuse
-   * \returns
-   */
-  RainPropagationLossModel & operator = (const RainPropagationLossModel &);
-
- 
-
-  //Atributes
-
-  double          m_frequency;     //!< the carrier frequency
-  double          m_distance;      // link distance
-  Control         controlSettings; // control settings
-  RainGenerator   rainGenerator;   // rain generator object
-  RainPropagation RainProp;        //  rain propagation calculator
-
-  std::vector<double> rainatt;
 };
 
 } // namespace ns3
