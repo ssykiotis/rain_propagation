@@ -892,6 +892,7 @@ private:
 double m_lambda;        //!< the carrier wavelength
 double m_minLoss;
 double m_systemLoss;
+
 Control m_controlSettings;
 RainGenerator m_rainGenerator;
 RainAttenuation m_RainAtt;
