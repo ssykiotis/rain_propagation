@@ -29,7 +29,12 @@
 #include "ns3/random-variable-stream.h"
 #include <map>
 
-namespace ns3 {
+#include "rain-attenuation-structs.h"
+#include "rain-attenuation-control.h"
+#include "rain-attenuation-RainGenerator.h"
+#include "rain-attenuation-RainAttenuation.h"
+
+namespace ns3{
 
 /**
  * \defgroup propagation Propagation Models
@@ -37,6 +42,9 @@ namespace ns3 {
  */
 
 class MobilityModel;
+class Control;
+class RainGenerator;
+class RainAttenuation;
 
 /**
  * \ingroup propagation
@@ -254,7 +262,7 @@ private:
  * MinLoss is 0 dB, which means that by default the model will return 
  * \f$ P_r = P_t \f$ for \f$ d <= \lambda / 2 \sqrt{\pi} \f$. We note
  * that this value of \f$ d \f$ is outside of the far field
- * region, hence the validity of the model in the far field region is
+ * region, henced the validity of the model in the far field region is
  * not affected.
  * 
  */
@@ -854,6 +862,40 @@ private:
   virtual int64_t DoAssignStreams (int64_t stream);
 private:
   double m_range; //!< Maximum Transmission Range (meters)
+};
+
+
+class RainAttenuationLossModel : public FriisPropagationLossModel
+{
+public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+  RainAttenuationLossModel (double lat, double lon, int month, double prctile);
+
+private:
+  /**
+   * \brief Copy constructors
+   *
+   * Defined and unimplemented to avoid misuse
+   */
+  RainAttenuationLossModel (const RainAttenuationLossModel &);
+  RainAttenuationLossModel & operator = (const RainAttenuationLossModel &);
+
+
+  virtual double DoCalcRxPower (double txPowerDbm,
+                                Ptr<MobilityModel> a,
+                                Ptr<MobilityModel> b) const;
+
+double m_lambda;        //!< the carrier wavelength
+double m_minLoss;
+double m_systemLoss;
+Control m_controlSettings;
+RainGenerator m_rainGenerator;
+RainAttenuation m_RainAtt;
+
 };
 
 } // namespace ns3
