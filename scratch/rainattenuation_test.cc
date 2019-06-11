@@ -29,7 +29,7 @@ int main (int argc,char *argv[]){
   bool verbose =true;
   uint32_t nWifi = 1;  //stations per access point
   uint32_t nAP = 1; 
-  double stop_time = 10;
+  double stop_time = 5;
 
   CommandLine cmd;
   cmd.AddValue ("nAP", "Number of AP nodes/devices", nAP);
@@ -58,12 +58,14 @@ int main (int argc,char *argv[]){
 
   Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel> ();
   Ptr<FriisPropagationLossModel> lossModel = CreateObject<FriisPropagationLossModel> ();
-  // Ptr<RainPropagationLossModel> lossModel = CreateObject<RainPropagationLossModel> ();
+  Ptr<RainAttenuationLossModel> rainLossModel = CreateObject<RainAttenuationLossModel> (52.52,13.4049,6,99.99);
 
   lossModel->SetFrequency (5.180e9);
-  // lossModel->SetFrequency (60e9);
+  rainLossModel->SetFrequency (60e9);
 
   spectrumChannel->AddPropagationLossModel (lossModel);
+  spectrumChannel->AddPropagationLossModel(rainLossModel);
+
   Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel> ();
   spectrumChannel->SetPropagationDelayModel (delayModel);
   spectrumPhy.SetChannel (spectrumChannel);
@@ -103,7 +105,7 @@ int main (int argc,char *argv[]){
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   
   positionAlloc->Add (Vector (0.0, 0.0, 0.0));
-  positionAlloc->Add (Vector (0.0, 10.0, 0.0));
+  positionAlloc->Add (Vector (0.0, 100.0, 0.0));
 
 
   mobility.SetPositionAllocator (positionAlloc);

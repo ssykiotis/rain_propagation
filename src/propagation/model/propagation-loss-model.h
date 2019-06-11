@@ -42,9 +42,7 @@ namespace ns3{
  */
 
 class MobilityModel;
-class Control;
-class RainGenerator;
-class RainAttenuation;
+
 
 /**
  * \ingroup propagation
@@ -865,7 +863,7 @@ private:
 };
 
 
-class RainAttenuationLossModel : public FriisPropagationLossModel
+class RainAttenuationLossModel : public PropagationLossModel
 {
 public:
   /**
@@ -875,6 +873,12 @@ public:
   static TypeId GetTypeId (void);
   RainAttenuationLossModel (double lat, double lon, int month, double prctile);
   RainAttenuationLossModel ();
+
+  void SetFrequency (double frequency);
+  double GetFrequency (void) const;
+
+  virtual int64_t DoAssignStreams (int64_t stream);
+
 
 
 private:
@@ -891,13 +895,16 @@ private:
                                 Ptr<MobilityModel> a,
                                 Ptr<MobilityModel> b) const;
 
-double m_lambda;        //!< the carrier wavelength
-double m_minLoss;
-double m_systemLoss;
+
+
+double m_frequency;        //!< the carrier wavelength
 
 Control m_controlSettings;
 RainGenerator m_rainGenerator;
 RainAttenuation m_RainAtt;
+int m_month;
+double m_prctile;
+std::vector<double> m_rainvec;
 
 };
 

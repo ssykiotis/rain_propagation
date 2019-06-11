@@ -12,14 +12,12 @@ RainAttenuation::RainAttenuation(){
 
 RainAttenuation::RainAttenuation(double f, std::vector<double> R, double prctile)
 {
-    this->f = f/1e09;
     this->theta = 0;
     this->tau = 0;
     this->prctile = prctile/100;
     this->R_vec = R;
-    this->SpecGammaCoeffs = SpecRainAttCoeffs();
-    this->GammaCoeffs     = RainAttCoeffs();
-    CalcRainPrctile();
+    Init(f/1e09);
+
 };
 
 RainAttenuation::RainAttenuation(double f, double theta, double tau,std::vector<double> R, double prctile)
@@ -28,9 +26,18 @@ RainAttenuation::RainAttenuation(double f, double theta, double tau,std::vector<
     this->tau = tau;
     this->prctile = prctile; 
     this->R_vec = R;
-    this->SpecGammaCoeffs = SpecRainAttCoeffs();
-    this->GammaCoeffs = RainAttCoeffs(); 
+    Init(f/1e09);
 };
+
+
+void RainAttenuation::Init(double f)
+{
+    this->f = f;
+    SpecGammaCoeffs = SpecRainAttCoeffs();
+    GammaCoeffs     = RainAttCoeffs();
+    CalcRainPrctile();
+};
+
 
 
 SpecRainAttCoeff RainAttenuation::SpecRainAttCoeffs()

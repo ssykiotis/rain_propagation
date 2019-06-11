@@ -70,8 +70,8 @@ void RainGenerator::ITUR837_calculation()
 {
 
     //calculate Mean Temperatures
-    std::vector<double> latMap = ReadCoordinates("rain_data/ITU/temperature/LAT_T.csv");
-    std::vector<double> lonMap = ReadCoordinates("rain_data/ITU/temperature/LON_T.csv");
+    std::vector<double> latMap = ReadCoordinates("src/propagation/model/rain_data/ITU/temperature/LAT_T.csv");
+    std::vector<double> lonMap = ReadCoordinates("src/propagation/model/rain_data/ITU/temperature/LON_T.csv");
 
     std::vector<double> latMap_or = latMap;
     std::vector<double> lonMap_or = lonMap;
@@ -91,7 +91,7 @@ void RainGenerator::ITUR837_calculation()
     std::vector<double> T;
     for (int i = 1; i < 13; i++)
     {
-        const char* filename = "rain_data/ITU/temperature/T_Month%.2d.csv";
+        const char* filename = "src/propagation/model/rain_data/ITU/temperature/T_Month%.2d.csv";
         for (uint j = 0; j < sq.size(); j++)
         {
            T.push_back(ReadCsvValue(filename, i, sq[j].lat, sq[j].lon));    
@@ -104,8 +104,8 @@ void RainGenerator::ITUR837_calculation()
     lonMap.clear();
 
     //calculate Mean Monthly Total Rainfall
-    latMap = ReadCoordinates("rain_data/ITU/monthly_total/LAT_MT.csv");
-    lonMap = ReadCoordinates("rain_data/ITU/monthly_total/LON_MT.csv");
+    latMap = ReadCoordinates("src/propagation/model/rain_data/ITU/monthly_total/LAT_MT.csv");
+    lonMap = ReadCoordinates("src/propagation/model/rain_data/ITU/monthly_total/LON_MT.csv");
 
     latMap_or = latMap;
     lonMap_or = lonMap;
@@ -126,7 +126,7 @@ void RainGenerator::ITUR837_calculation()
     std::vector<double> MT;
     for (int i = 1; i < 13; i++)
     {
-        const char* filename = "rain_data/ITU/monthly_total/MT_Month%.2d.csv";
+        const char* filename = "src/propagation/model/rain_data/ITU/monthly_total/MT_Month%.2d.csv";
         for (uint j = 0; j < sq.size(); j++)
         {
            MT.push_back(ReadCsvValue(filename, i, sq[j].lat, sq[j].lon));    
@@ -161,19 +161,19 @@ void RainGenerator::RainValues()
     const char* filename;
     switch (cl_region){
     case 'A':
-        filename = "rain_data/equatorial.csv";
+        filename = "src/propagation/model/rain_data/equatorial.csv";
         break;    
     case 'B':
-        filename = "rain_data/arid.csv";
+        filename = "src/propagation/model/rain_data/arid.csv";
         break;
     case 'C':
-        filename = "rain_data/temperate.csv";
+        filename = "src/propagation/model/rain_data/temperate.csv";
         break;    
     case 'D':
-        filename = "rain_data/snow.csv";
+        filename = "src/propagation/model/rain_data/snow.csv";
         break;
     case 'E':
-        filename = "rain_data/snow.csv";
+        filename = "src/propagation/model/rain_data/snow.csv";
     default:
         break;
     }
@@ -350,7 +350,7 @@ void RainGenerator::Run()
 std::vector<Koppen> RainGenerator::ReadKoppen()
 {
     std::vector<Koppen> v;
-    std::ifstream ip("rain_data/koppen.csv");
+    std::ifstream ip("src/propagation/model/rain_data/koppen.csv");
 
     std::string readlat;
     std::string readlon;
@@ -509,7 +509,8 @@ double RainGenerator::BilinearInterpolation(std::vector<double> T, std::vector<C
 double RainGenerator::ReadCsvValue(const char* filename,int i, int latMinIndex, int lonMinIndex)
 {        
         char buffer[100];
-        //int n = sprintf(buffer, filename, i);
+        int n = sprintf(buffer, filename, i);
+        n +=0;
         std::ifstream ip(buffer);
         std::string line;
         int LinesToGo = latMinIndex;

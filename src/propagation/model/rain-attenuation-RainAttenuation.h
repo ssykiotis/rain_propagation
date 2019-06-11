@@ -12,6 +12,8 @@ public:
     RainAttenuation(double f,std::vector<double> R, double prctile);
     RainAttenuation(double f, double theta, double tau,std::vector<double> R, double prctile);
 
+    void Init(double f);
+
     SpecRainAttCoeff SpecRainAttCoeffs();
     RainAttCoeff RainAttCoeffs();
 
@@ -21,9 +23,6 @@ public:
 
     void CalcRainPrctile();
         
-
-private:
-
     double f;
     double prctile;
 
@@ -34,6 +33,11 @@ private:
     double tau;
     SpecRainAttCoeff SpecGammaCoeffs;
     RainAttCoeff GammaCoeffs;
+
+
+private:
+
+  
 
 };
 

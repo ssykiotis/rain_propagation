@@ -268,6 +268,7 @@ FriisPropagationLossModel::DoCalcRxPower (double txPowerDbm,
   double denominator = 16 * M_PI * M_PI * distance * distance * m_systemLoss;
   double lossDb = -10 * log10 (numerator / denominator);
   NS_LOG_DEBUG ("distance=" << distance<< "m, loss=" << lossDb <<"dB");
+
   return txPowerDbm - std::max (lossDb, m_minLoss);
 }
 
@@ -945,7 +946,7 @@ RainAttenuationLossModel::GetTypeId (void)
     .AddConstructor<RainAttenuationLossModel> ()
     .AddAttribute ("Frequency", 
                    "The carrier frequency (in Hz) at which propagation occurs  (default is 60 GHz).",
-                   DoubleValue (60e09),
+                   DoubleValue (60e9),
                    MakeDoubleAccessor (&RainAttenuationLossModel::SetFrequency,
                                        &RainAttenuationLossModel::GetFrequency),
                    MakeDoubleChecker<double> ())
@@ -961,17 +962,17 @@ RainAttenuationLossModel::RainAttenuationLossModel (double lat, double lon, int 
   rainGenerator.Run();
 
   //Create Rain Attenuation object
-  double f = GetFrequency()/1e09;
-  m_minLoss = GetMinLoss();
-  m_systemLoss = GetSystemLoss();
-  std::vector<double> rainvec = rainGenerator.GetRainValues(month);
-  RainAttenuation RainAtt(f,rainvec,prctile);
+  m_month           = month;
+  m_prctile         = prctile;
+
+  m_rainvec = rainGenerator.GetRainValues(month);
+  RainAttenuation RainAtt(m_frequency,m_rainvec,m_prctile);
+
 
   //save them in class variables
-  // m_controlSettings = controlSettings;
-  // m_rainGenerator   = rainGenerator;
-  // m_RainAtt         = RainAtt;
-
+  m_controlSettings = controlSettings;
+  m_rainGenerator   = rainGenerator;
+  m_RainAtt         = RainAtt;
 }
 
 RainAttenuationLossModel::RainAttenuationLossModel ()
@@ -979,58 +980,41 @@ RainAttenuationLossModel::RainAttenuationLossModel ()
 }
 
 
+void
+RainAttenuationLossModel::SetFrequency (double frequency)
+{
+  m_frequency = frequency/1e9;
+  m_RainAtt.Init(m_frequency);
+}
+
+double
+RainAttenuationLossModel::GetFrequency (void) const
+{
+  return m_frequency;
+}
+
+
+
 double 
 RainAttenuationLossModel::DoCalcRxPower (double txPowerDbm,
                                           Ptr<MobilityModel> a,
                                           Ptr<MobilityModel> b) const
 {
-  /*
-   * Friis free space equation:
-   * where Pt, Gr, Gr and P are in Watt units
-   * L is in meter units.
-   *
-   *    P     Gt * Gr * (lambda^2)
-   *   --- = ---------------------
-   *    Pt     (4 * pi * d)^2 * L
-   *
-   * Gt: tx gain (unit-less)
-   * Gr: rx gain (unit-less)
-   * Pt: tx power (W)
-   * d: distance (m)
-   * L: system loss
-   * lambda: wavelength (m)
-   *
-   * Here, we ignore tx and rx gain and the input and output values 
-   * are in dB or dBm:
-   *
-   *                           lambda^2
-   * rx = tx +  10 log10 (-------------------)
-   *                       (4 * pi * d)^2 * L
-   *
-   * rx: rx power (dB)
-   * tx: tx power (dB)
-   * d: distance (m)
-   * L: system loss (unit-less)
-   * lambda: wavelength (m)
-   */
-  double distance = a->GetDistanceFrom (b);
-  if (distance < 3*m_lambda)
-    {
-      NS_LOG_WARN ("distance not within the far field region => inaccurate propagation loss value");
-    }
-  if (distance <= 0)
-    {
-      return txPowerDbm - m_minLoss;
-    }
-  double numerator = m_lambda * m_lambda;
-  double denominator = 16 * M_PI * M_PI * distance * distance * m_systemLoss;
-  double lossDb = -10 * log10 (numerator / denominator);
 
+  double distance = a->GetDistanceFrom (b);
+  
   double rainLoss = m_RainAtt.CalcRainAtt(distance/1e3);
-  NS_LOG_DEBUG ("distance=" << distance<< "m, loss=" << lossDb <<"dB," << "rain att= " << rainLoss << "dB");
-  // NS_LOG_UNCOND();
-  return txPowerDbm - std::max (lossDb, m_minLoss) - rainLoss;
+  // NS_LOG_DEBUG ("distance=" << distance<< "m, loss=" << lossDb <<"dB," << "rain att= " << rainLoss << "dB");
+  NS_LOG_UNCOND("distance=" << distance<< "m, " << "rain att= " << rainLoss << "dB");
+  return txPowerDbm - rainLoss;
 }
+
+int64_t
+RainAttenuationLossModel::DoAssignStreams (int64_t stream)
+{
+  return 0;
+}
+
 
 //create friis first and then rainpropagation loss model
 //ns log component define , ns3 logging components
