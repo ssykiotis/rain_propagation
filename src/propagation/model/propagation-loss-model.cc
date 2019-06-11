@@ -1028,7 +1028,7 @@ RainAttenuationLossModel::DoCalcRxPower (double txPowerDbm,
 
   double rainLoss = m_RainAtt.CalcRainAtt(distance/1e3);
   NS_LOG_DEBUG ("distance=" << distance<< "m, loss=" << lossDb <<"dB," << "rain att= " << rainLoss << "dB");
-  NS_LOG_UNCOND();
+  // NS_LOG_UNCOND();
   return txPowerDbm - std::max (lossDb, m_minLoss) - rainLoss;
 }
 
