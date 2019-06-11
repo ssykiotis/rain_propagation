@@ -45,7 +45,7 @@ namespace ns3{
         std::vector<int> v_cum;
         v_cum.push_back(0);
 
-        for (int i = 1; i < monthhours.size()+1; i++)
+        for (uint i = 1; i < monthhours.size()+1; i++)
         {
           v_cum.push_back( v_cum[i-1] + monthhours [i-1] );
         }

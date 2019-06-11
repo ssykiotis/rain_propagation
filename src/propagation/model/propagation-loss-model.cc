@@ -965,13 +965,17 @@ RainAttenuationLossModel::RainAttenuationLossModel (double lat, double lon, int 
   m_minLoss = GetMinLoss();
   m_systemLoss = GetSystemLoss();
   std::vector<double> rainvec = rainGenerator.GetRainValues(month);
-  RainAttenuation RainAtt(f,0,rainvec,prctile);
+  RainAttenuation RainAtt(f,rainvec,prctile);
 
   //save them in class variables
   // m_controlSettings = controlSettings;
   // m_rainGenerator   = rainGenerator;
   // m_RainAtt         = RainAtt;
 
+}
+
+RainAttenuationLossModel::RainAttenuationLossModel ()
+{
 }
 
 
@@ -1022,13 +1026,14 @@ RainAttenuationLossModel::DoCalcRxPower (double txPowerDbm,
   double denominator = 16 * M_PI * M_PI * distance * distance * m_systemLoss;
   double lossDb = -10 * log10 (numerator / denominator);
 
-  m_RainAtt.SetDistance(distance/1e03);
-  double rainLoss = m_RainAtt.CalcRainAtt();
-
+  double rainLoss = m_RainAtt.CalcRainAtt(distance/1e3);
   NS_LOG_DEBUG ("distance=" << distance<< "m, loss=" << lossDb <<"dB," << "rain att= " << rainLoss << "dB");
+  NS_LOG_UNCOND();
   return txPowerDbm - std::max (lossDb, m_minLoss) - rainLoss;
 }
 
+//create friis first and then rainpropagation loss model
+//ns log component define , ns3 logging components
 
 
 

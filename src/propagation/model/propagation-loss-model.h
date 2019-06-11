@@ -874,6 +874,8 @@ public:
    */
   static TypeId GetTypeId (void);
   RainAttenuationLossModel (double lat, double lon, int month, double prctile);
+  RainAttenuationLossModel ();
+
 
 private:
   /**

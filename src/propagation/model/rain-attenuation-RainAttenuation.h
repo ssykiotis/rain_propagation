@@ -8,16 +8,16 @@ namespace ns3{
 class RainAttenuation{
 
 public:
-    RainAttenuation(double f, double d,std::vector<double> R, double prctile);
-    RainAttenuation(double f, double d, double theta, double tau,std::vector<double> R, double prctile);
+    RainAttenuation();
+    RainAttenuation(double f,std::vector<double> R, double prctile);
+    RainAttenuation(double f, double theta, double tau,std::vector<double> R, double prctile);
 
     SpecRainAttCoeff SpecRainAttCoeffs();
     RainAttCoeff RainAttCoeffs();
 
-    double SpecAtt(double R);
-    double EffectivePathLength(double R);
-    double CalcRainAtt();
-    void SetDistance(double dist);
+    double SpecAtt(double R) const;
+    double EffectivePathLength(double R,double d) const;
+    double CalcRainAtt(double d) const;
 
     void CalcRainPrctile();
         
@@ -25,7 +25,6 @@ public:
 private:
 
     double f;
-    double d;
     double prctile;
 
     double R_prctile;    

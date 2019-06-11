@@ -12,6 +12,7 @@ class RainGenerator{
 
 public:
 
+    RainGenerator();
     RainGenerator(Control controlSettings);
 
     char DecideClimaticRegion();
@@ -32,7 +33,7 @@ private:
     std::vector<double> ReadCoordinates(const char* filename);
 
     int FindMinIndex(std::vector<double> map);
-    std::vector<Cords> ClosestPoints(std::vector<double> latMap,std::vector<double> lonMap, int latMinIndex,int lonMinIndex);
+    std::vector<Cords> ClosestPoints(std::vector<double> latMap,std::vector<double> lonMap, double latMinIndex,double lonMinIndex);
     double ReadCsvValue(const char* filename,int i,int latMinIndex,int lonMinIndex);
     double BilinearInterpolation(std::vector<double> T, std::vector<Cords> sq, double lat,double lon, std::vector<double> latMap,std::vector<double>lonMap);
 

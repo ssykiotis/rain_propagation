@@ -5,10 +5,14 @@
 
 namespace ns3{
 
-RainAttenuation::RainAttenuation(double f, double d, std::vector<double> R, double prctile)
+RainAttenuation::RainAttenuation(){
+
+};
+
+
+RainAttenuation::RainAttenuation(double f, std::vector<double> R, double prctile)
 {
     this->f = f/1e09;
-    this->d = d/1e03;
     this->theta = 0;
     this->tau = 0;
     this->prctile = prctile/100;
@@ -18,7 +22,7 @@ RainAttenuation::RainAttenuation(double f, double d, std::vector<double> R, doub
     CalcRainPrctile();
 };
 
-RainAttenuation::RainAttenuation(double f, double d, double theta, double tau,std::vector<double> R, double prctile)
+RainAttenuation::RainAttenuation(double f, double theta, double tau,std::vector<double> R, double prctile)
 {
     this->theta = theta;
     this->tau = tau;
@@ -72,7 +76,7 @@ SpecRainAttCoeff RainAttenuation::SpecRainAttCoeffs()
     double log_f =log10(f);
     SpecRainAttCoeff gammacoeffs {0,0,0,0};
 
-    for (int i = 0; i < k_h_table.size(); i++)
+    for (uint i = 0; i < k_h_table.size(); i++)
     {
         gammacoeffs.k_h += k_h_table[i][0]*exp(-pow((log_f-k_h_table[i][1])/k_h_table[i][2],2));
         gammacoeffs.k_v += k_v_table[i][0]*exp(-pow((log_f-k_v_table[i][1])/k_v_table[i][2],2)); 
@@ -80,7 +84,7 @@ SpecRainAttCoeff RainAttenuation::SpecRainAttCoeffs()
     gammacoeffs.k_h+=log_f*k_h_m+k_h_c;
     gammacoeffs.k_v+=log_f*k_v_m+k_v_c;
 
-    for (int i = 0; i < a_h_table.size(); i++)
+    for (uint i = 0; i < a_h_table.size(); i++)
     {
         gammacoeffs.a_h += a_h_table[i][0]*exp(-pow((log_f-a_h_table[i][1])/a_h_table[i][2],2));
         gammacoeffs.a_v += a_v_table[i][0]*exp(-pow((log_f-a_v_table[i][1])/a_v_table[i][2],2)); 
@@ -102,13 +106,13 @@ RainAttCoeff RainAttenuation::RainAttCoeffs()
     return attcoeffs;
 };
 
-double RainAttenuation::SpecAtt(double R)
+double RainAttenuation::SpecAtt(double R) const
 {
     return GammaCoeffs.k*pow(R,GammaCoeffs.a);
 };
 
 
-double RainAttenuation::EffectivePathLength(double R)
+double RainAttenuation::EffectivePathLength(double R,double d) const
 {
 
     double effpl;
@@ -132,15 +136,11 @@ double RainAttenuation::EffectivePathLength(double R)
         return effpl;
 };
 
-double RainAttenuation::CalcRainAtt()
+double RainAttenuation::CalcRainAtt(double d) const
 {
     double gamma_r = SpecAtt(R_prctile);
-    double effpl = EffectivePathLength(R_prctile);
+    double effpl = EffectivePathLength(R_prctile,d);
     return gamma_r*effpl*d;
-};
-
-void RainAttenuation::SetDistance(double dist){
-    this->d = dist;
 };
 
 
