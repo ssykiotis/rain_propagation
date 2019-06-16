@@ -862,6 +862,14 @@ private:
   double m_range; //!< Maximum Transmission Range (meters)
 };
 
+enum Place{
+  SanJose=1,Cairo,Berlin,Moscow
+};
+
+enum Month {
+    Jan=1, Feb, Mar, Apr, May, Jun,Jul, Aug,Sept,Oct, Nov, Dec
+};
+
 
 class RainAttenuationLossModel : public PropagationLossModel
 {
@@ -871,8 +879,9 @@ public:
    * \return the object TypeId
    */
   static TypeId GetTypeId (void);
-  RainAttenuationLossModel (double lat, double lon, int month, double prctile);
   RainAttenuationLossModel ();
+  RainAttenuationLossModel (double lat, double lon, int month, double prctile);
+  RainAttenuationLossModel (Place loc, Month month, double prctile);
 
   void SetFrequency (double frequency);
   double GetFrequency (void) const;

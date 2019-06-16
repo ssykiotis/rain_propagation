@@ -954,6 +954,10 @@ RainAttenuationLossModel::GetTypeId (void)
   return tid;
 }
 
+RainAttenuationLossModel::RainAttenuationLossModel ()
+{
+}
+
 RainAttenuationLossModel::RainAttenuationLossModel (double lat, double lon, int month, double prctile)
 {
   //Initialize and run the generator
@@ -975,9 +979,49 @@ RainAttenuationLossModel::RainAttenuationLossModel (double lat, double lon, int 
   m_RainAtt         = RainAtt;
 }
 
-RainAttenuationLossModel::RainAttenuationLossModel ()
-{
+RainAttenuationLossModel::RainAttenuationLossModel (Place loc, Month month, double prctile){
+   
+  double lat;
+  double lon;
+
+  switch(loc) 
+  {
+    case 1: lat = 9.928069;
+            lon = -84.090729;
+            break;
+
+    case 2: lat = 30.044420;
+            lon = 31.235712;
+            break;
+
+    case 3: lat = 52.5200;
+            lon = 13.4050;
+            break;
+
+    case 4: lat = 55.755825;
+            lon = 37.617298;
+            break;
+  }
+
+
+  Control controlSettings(lat,lon);
+  RainGenerator rainGenerator(controlSettings);
+  rainGenerator.Run();
+
+  //Create Rain Attenuation object
+  m_month           = month;
+  m_prctile         = prctile;
+
+  m_rainvec = rainGenerator.GetRainValues(month);
+  RainAttenuation RainAtt(m_frequency,m_rainvec,m_prctile);
+
+
+  //save them in class variables
+  m_controlSettings = controlSettings;
+  m_rainGenerator   = rainGenerator;
+  m_RainAtt         = RainAtt;
 }
+
 
 
 void
@@ -1005,7 +1049,7 @@ RainAttenuationLossModel::DoCalcRxPower (double txPowerDbm,
   
   double rainLoss = m_RainAtt.CalcRainAtt(distance/1e3);
   // NS_LOG_DEBUG ("distance=" << distance<< "m, loss=" << lossDb <<"dB," << "rain att= " << rainLoss << "dB");
-  NS_LOG_UNCOND("distance=" << distance<< "m, " << "rain att= " << rainLoss << "dB");
+  NS_LOG_DEBUG("distance=" << distance<< "m, " << "rain att= " << rainLoss << "dB");
   return txPowerDbm - rainLoss;
 }
 
